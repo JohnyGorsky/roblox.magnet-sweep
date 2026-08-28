@@ -1,0 +1,18 @@
+# Roblox / Rojo
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+sourcemap.json
+
+# Meshy / asset working files (the published id is what we keep, not the blob)
+assets/meshy/**/*.glb
+assets/meshy/**/*.fbx
+assets/meshy/**/*.obj
+assets/meshy/**/*.zip
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/

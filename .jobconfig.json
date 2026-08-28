@@ -1,0 +1,17 @@
+{
+  "_comment": "MAGNET SWEEP has ONE place (decision 0001). studio_game/ is the single sync root; studio_lobby/ is an empty stub kept only so a future lobby split stays cheap - nothing syncs from it and it must not be listed here until it holds a real place. *** EVERY PATH BELOW IS UNVERIFIED. *** Nothing is synced yet and no MCP probe has been run. The layout is GUESSED from The Last Tide, whose layout is FLAT (service folders directly at the sync root; StarterPlayer's children sit at the root as StarterPlayerScripts/ and StarterCharacterScripts/, NOT nested under StarterPlayer/). Jungle uses the NESTED Rojo convention instead. The two disagree, which is exactly why this must be MEASURED rather than assumed - Tide job 003 was burned by assuming, and ELEVATOR 13 inherited the same unverified guess. Job 002 probes the place over MCP and rewrites this file with what was OBSERVED. Until then, do not cite these paths as fact. File suffixes are likewise unproven here; on Tide, .luau = ModuleScript, .server.luau = Script/Server, .local.luau = LocalScript, and .client.luau in StarterPlayerScripts RUNS TWICE (a trap), while .module.luau is not a recognised suffix at all.",
+  "_status": "UNVERIFIED - guessed from roblox.tide, not probed. Job 002 owns proving it.",
+  "synced_paths": [
+    "studio_game/ReplicatedFirst/",
+    "studio_game/ReplicatedStorage/",
+    "studio_game/ServerScriptService/",
+    "studio_game/ServerStorage/",
+    "studio_game/StarterPlayerScripts/",
+    "studio_game/StarterCharacterScripts/"
+  ],
+  "non_synced_paths": [
+    "studio_game/StarterGui/",
+    "studio_game/StarterPack/",
+    "studio_game/Workspace/"
+  ]
+}
