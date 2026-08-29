@@ -22,10 +22,10 @@ Persistent, server-wide, adjacent to the Workshop.
 - [ ] **P1** Arena panel GUI: champion, owner, hold time, HP, defeats
 - [ ] **P1** Arena notifications while in the factory x3
 - [ ] **P1** **Measure** concurrent robot count at 30fps on a mid phone
-- [ ] **P2** Owner disconnect handling for a deployed robot
+- [ ] **P1** Owner leaves: ~2 min grace period, then withdraw and save HP as it stands
 
 ---
 
-**47 items** — P0 41 · P1 5 · P2 1
+**47 items** — P0 41 · P1 6 · P2 0
 
 > Counted by `tools/gen-build-manifest.py`. The last `xN` on a line is that line's count.

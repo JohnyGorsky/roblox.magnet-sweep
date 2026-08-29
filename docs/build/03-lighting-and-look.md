@@ -10,6 +10,7 @@ visual decision is judged against it.
 - [ ] **P0** `Sky` -- the thing chrome actually reflects
 - [ ] **P0** `EnvironmentSpecularScale` / `EnvironmentDiffuseScale` tuned against a chrome test object
 - [ ] **P0** Post chain: BloomEffect, ColorCorrectionEffect, SunRaysEffect x3
+- [ ] **P0** **Choose the reference device and the memory / draw-call / frame-time budgets.** Every later measurement is meaningless without them
 - [ ] **P0** Quality tier detector -- measured frame time, NOT `TouchEnabled`
 - [ ] **P0** Tier controller (client): post chain on/off, PBR vs Reflectance swap, light range cull, particle rate, `MaxConcurrentPull` x5
 - [ ] **P0** Measure the three tiers in the Device Emulator and record the numbers
@@ -19,6 +20,6 @@ visual decision is judged against it.
 
 ---
 
-**17 items** — P0 14 · P1 2 · P2 1
+**18 items** — P0 15 · P1 2 · P2 1
 
 > Counted by `tools/gen-build-manifest.py`. The last `xN` on a line is that line's count.

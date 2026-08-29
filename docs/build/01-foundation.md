@@ -6,7 +6,7 @@ assumes the sync layout, and every balance number later groups tune assumes the 
 ## Items
 
 - [ ] **P0** Create the MAGNET SWEEP place; record its id in `docs/systems/places/README.md` and the project skill
-- [ ] **P0** Decide place settings deliberately: access, social slots, `MaxPlayers` x3
+- [ ] **P0** Apply place settings: access, social slots, and `MaxPlayers` = **12** (decided) x3
 - [ ] **P0** Enable and configure `StreamingEnabled` -- radius, behaviour, target radius
 - [ ] **P0** **Probe the sync layout over MCP** -- flat vs nested, per service folder
 - [ ] **P0** Probe which file suffix produces which class; specifically whether `.client.luau` in `StarterPlayerScripts` runs twice

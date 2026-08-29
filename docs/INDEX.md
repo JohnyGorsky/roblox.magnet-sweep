@@ -66,8 +66,11 @@ making a decision: [0004](decisions/0004-parts-are-content-rig-is-the-engine.md)
 
 ## Build
 
-- **[The manifest](build/README.md)** — 14 groups, **572 items**. The MVP (groups 01-12) is **349** of
-  them; groups 13-14 are post-gate. `P0` means *required within its group*, **not** *in the MVP*
+- **[The job ladder](build/job-order.md)** — **the work order.** 28 job-sized slices to the MVP gate,
+  in dependency order, with what each needs from you
+- [The manifest](build/README.md) — 14 groups, **581 items**, organised by system. The MVP (groups
+  01-12) is **358** of them; groups 13-14 are post-gate. `P0` means *required within its group*,
+  **not** *in the MVP*
 - [Spec coverage](build/spec-coverage.md) — all **87** sections mapped, plus 6 deliberate divergences
   and an honest list of what the spec never specified
 - [Features](features/) — units of work and their status. Empty until code exists

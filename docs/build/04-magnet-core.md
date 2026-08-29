@@ -10,6 +10,8 @@ before there is a factory to sweep in -- one grey room and a pile of bolts is en
 - [ ] **P0** Object pool -- allocate once, re-pose forever, **re-anchor on return**
 - [ ] **P0** `MaxConcurrentPull` cap with a REACT waiting queue
 - [ ] **P0** Client pull motion: slide, lift, rotate, accelerate, arc into the magnet
+- [ ] **P0** Pull force curve: fast under Power, slow + straining near it, **shakes and refuses** above it
+- [ ] **P0** Radius drives BOTH ranges, REACT ~40% beyond PULL
 - [ ] **P0** Server collection grant, BATCHED on a tick -- never one remote per object
 - [ ] **P0** Server validation: the object must be one the server spawned
 - [ ] **P0** Magnet Power / Radius / Drive / Capacity stats, read from config x4
@@ -24,6 +26,6 @@ before there is a factory to sweep in -- one grey room and a pile of bolts is en
 
 ---
 
-**35 items** — P0 32 · P1 2 · P2 1
+**37 items** — P0 34 · P1 2 · P2 1
 
 > Counted by `tools/gen-build-manifest.py`. The last `xN` on a line is that line's count.

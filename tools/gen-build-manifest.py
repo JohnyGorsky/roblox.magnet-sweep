@@ -16,7 +16,7 @@ Nothing else can be trusted until this group is done. Every file every later gro
 assumes the sync layout, and every balance number later groups tune assumes the config modules exist.
 """, [
  ("P0", "Create the MAGNET SWEEP place; record its id in `docs/systems/places/README.md` and the project skill"),
- ("P0", "Decide place settings deliberately: access, social slots, `MaxPlayers` x3"),
+ ("P0", "Apply place settings: access, social slots, and `MaxPlayers` = **12** (decided) x3"),
  ("P0", "Enable and configure `StreamingEnabled` -- radius, behaviour, target radius"),
  ("P0", "**Probe the sync layout over MCP** -- flat vs nested, per service folder"),
  ("P0", "Probe which file suffix produces which class; specifically whether `.client.luau` in `StarterPlayerScripts` runs twice"),
@@ -59,6 +59,7 @@ visual decision is judged against it.
  ("P0", "`Sky` -- the thing chrome actually reflects"),
  ("P0", "`EnvironmentSpecularScale` / `EnvironmentDiffuseScale` tuned against a chrome test object"),
  ("P0", "Post chain: BloomEffect, ColorCorrectionEffect, SunRaysEffect x3"),
+ ("P0", "**Choose the reference device and the memory / draw-call / frame-time budgets.** Every later measurement is meaningless without them"),
  ("P0", "Quality tier detector -- measured frame time, NOT `TouchEnabled`"),
  ("P0", "Tier controller (client): post chain on/off, PBR vs Reflectance swap, light range cull, particle rate, `MaxConcurrentPull` x5"),
  ("P0", "Measure the three tiers in the Device Emulator and record the numbers"),
@@ -76,6 +77,8 @@ before there is a factory to sweep in -- one grey room and a pile of bolts is en
  ("P0", "Object pool -- allocate once, re-pose forever, **re-anchor on return**"),
  ("P0", "`MaxConcurrentPull` cap with a REACT waiting queue"),
  ("P0", "Client pull motion: slide, lift, rotate, accelerate, arc into the magnet"),
+ ("P0", "Pull force curve: fast under Power, slow + straining near it, **shakes and refuses** above it"),
+ ("P0", "Radius drives BOTH ranges, REACT ~40% beyond PULL"),
  ("P0", "Server collection grant, BATCHED on a tick -- never one remote per object"),
  ("P0", "Server validation: the object must be one the server spawned"),
  ("P0", "Magnet Power / Radius / Drive / Capacity stats, read from config x4"),
@@ -150,10 +153,14 @@ The 45 seconds the game is arranged around.
  ("P0", "Detach sequence: shake, electricity, GRRRRR, CLANG"),
  ("P0", "Server-side Magnet Power detach check"),
  ("P0", "SALVAGE BREACH -- alarm, beacons, red wash, zone-wide"),
- ("P0", "Guardian 1: Slow Scrap Sweeper Bot -- patrol, detect, pursue, catch"),
+ ("P0", "Guardians are INERT until a part is stolen; only the OWNING guardian activates"),
+ ("P0", "Guardian 1: Slow Scrap Sweeper Bot -- patrol, detect, pursue across zones, catch"),
  ("P0", "Guardian 2: Wind-Up Security Bot"),
  ("P0", "Layered detection: distance, radius overlap, line-of-sight raycast x3"),
- ("P0", "Knockdown, part drop, ~5s recovery window, then neutral"),
+ ("P0", "Guardian home territory + the boundary test (decision 0014)"),
+ ("P0", "Caught INSIDE its territory -> the part RESETS to its spawn"),
+ ("P0", "Caught OUTSIDE -> ragdoll, part drops NEUTRAL, any player may take it"),
+ ("P0", "Guardian give-up + RETURN HOME state, so it is never stranded out of its zone"),
  ("P0", "Ownership protection window after detach"),
  ("P0", "SECURED at the Service Hub -- the payoff moment: banner, sound, light, VFX"),
  ("P0", "Profile write on SECURED, and ONLY on SECURED"),
@@ -177,7 +184,8 @@ part exists, or there will be a special case in a script forever.
  ("P0", "Install sequence: crane, KRRRK, VRRRR, CLUNK, bolts, practice swing"),
  ("P0", "Robot name + Roblox text filtering, in every display context"),
  ("P1", "Duplicate handling: REINFORCE Mk I/II/III, or RECYCLE x2"),
- ("P1", "Mobility sub-rigs: wheels, legs, tracks, hover x4"),
+ ("P1", "Part Archive wall logic -- a silhouette fills on SECURED, never on sighting"),
+ ("P1", "Mobility sub-rigs: wheels, legs, tracks, hover -- ONE shared locomotion clip, only Legs needs a walk cycle x4"),
  ("P1", "Decorative actuators: HingeConstraint spin, PrismaticConstraint punch x2"),
  ("P2", "`IKControl` head tracking"),
  ("P2", "`IKControl` aim for ranged profiles"),
@@ -204,7 +212,7 @@ Persistent, server-wide, adjacent to the Workshop.
  ("P1", "Arena panel GUI: champion, owner, hold time, HP, defeats"),
  ("P1", "Arena notifications while in the factory x3"),
  ("P1", "**Measure** concurrent robot count at 30fps on a mid phone"),
- ("P2", "Owner disconnect handling for a deployed robot"),
+ ("P1", "Owner leaves: ~2 min grace period, then withdraw and save HP as it stands"),
 ]))
 
 GROUPS.append(("11-economy-and-save", "Economy, repair and persistence", """
@@ -219,6 +227,7 @@ The pinch, and the thing that must never lose a player's progress.
  ("P0", "**Never overwrite a profile after a failed load**"),
  ("P0", "`BindToClose` flush"),
  ("P0", "Autosave path that structurally cannot see the carried slot"),
+ ("P0", "Uncollected scrap auto-recycles at the reduced rate on disconnect, as on death"),
  ("P0", "Idempotent grants with ids"),
  ("P1", "Repair Chute -- field repair with cooldown, reduced efficiency, per-window cap x3"),
  ("P1", "Migration function skeleton"),
@@ -231,7 +240,7 @@ In the MVP, not deferred -- [decision 0006](../decisions/0006-the-factory-refres
  ("P0", "Scrap Refresh every 30-60s from the pool"),
  ("P0", "Factory Cycle every ~4min: warning, machinery, retract unclaimed, respawn"),
  ("P0", "The 20-second warning -- audible and visible zone-wide, while running"),
- ("P0", "Per-zone part pool with rarity weighting"),
+ ("P0", "Per-zone part pool weighted by the RE-GRADED rarity (decision 0015)"),
  ("P1", "Factory Shift every ~12min x5 (Heavy, Electric, Gold, Security, Chaos)"),
  ("P1", "LEGENDARY PART DETECTED server notification"),
  ("P2", "The eight dynamic events x8"),
@@ -261,12 +270,12 @@ that map onto thumbnails 1 and 4.
 """, [
  ("P0", "The Foundry Heart ending + cinematic"),
  ("P0", "Endless Line: curated room modules and the distance metric"),
- ("P0", "Overclock + Magnet Core Level"),
+ ("P0", "Overclock + Magnet Core Level: starting Magnet Power + a percentage discount on every zone gate"),
  ("P0", "Monetisation: passes x4, dev products x4, `ProcessReceipt` grant-exactly-once x9"),
  ("P0", "**Audit every live listing against what the code grants**"),
  ("P0", "Store assets: icon, four thumbnails, description x6"),
  ("P1", "Part Archive completion rewards x12"),
- ("P1", "Cosmetics: magnet skins x7, robot paints x6, robot VFX x5, victory anims, entrances, trails, sound packs x22"),
+ ("P1", "Cosmetics: magnet skins x7, robot paints (PER PART) x6, robot VFX x5, victory anims, entrances, trails, sound packs x22"),
  ("P1", "Five daily leaderboards x5"),
  ("P1", "Relic Parts -- slots, rarities, effects must be DEFINED first x7"),
  ("P2", "Daily Factory Modifier"),
@@ -304,6 +313,10 @@ readme = ["""# The build manifest
 Everything that must be made, sized so one item is one sitting. Ordered **MVP-first**, around
 [the gate](../roadmap/mvp.md#the-gate) — not by the spec's own phase list (section 85), which builds
 outward from magnet physics without ever asking whether the game is fun yet.
+
+> **Looking for what to do next?** This page is organised **by system**, which is how you find
+> things. For the **work order**, see **[the job ladder](job-order.md)** — the same items sliced
+> into 28 job-sized pieces in dependency order, with what each one needs from a human.
 
 **Priorities:** `P0` must exist for the group to be usable · `P1` launch · `P2` post-launch.
 

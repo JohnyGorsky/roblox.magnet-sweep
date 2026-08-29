@@ -13,6 +13,7 @@ The pinch, and the thing that must never lose a player's progress.
 - [ ] **P0** **Never overwrite a profile after a failed load**
 - [ ] **P0** `BindToClose` flush
 - [ ] **P0** Autosave path that structurally cannot see the carried slot
+- [ ] **P0** Uncollected scrap auto-recycles at the reduced rate on disconnect, as on death
 - [ ] **P0** Idempotent grants with ids
 - [ ] **P1** Repair Chute -- field repair with cooldown, reduced efficiency, per-window cap x3
 - [ ] **P1** Migration function skeleton
@@ -20,6 +21,6 @@ The pinch, and the thing that must never lose a player's progress.
 
 ---
 
-**18 items** — P0 13 · P1 4 · P2 1
+**19 items** — P0 14 · P1 4 · P2 1
 
 > Counted by `tools/gen-build-manifest.py`. The last `xN` on a line is that line's count.

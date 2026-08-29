@@ -4,6 +4,10 @@ Everything that must be made, sized so one item is one sitting. Ordered **MVP-fi
 [the gate](../roadmap/mvp.md#the-gate) — not by the spec's own phase list (section 85), which builds
 outward from magnet physics without ever asking whether the game is fun yet.
 
+> **Looking for what to do next?** This page is organised **by system**, which is how you find
+> things. For the **work order**, see **[the job ladder](job-order.md)** — the same items sliced
+> into 28 job-sized pieces in dependency order, with what each one needs from a human.
+
 **Priorities:** `P0` must exist for the group to be usable · `P1` launch · `P2` post-launch.
 
 > ⚠️ **`P0` is not the same as "in the MVP".** Groups **01-12** are the MVP. Groups **13** (zones 3-12)
@@ -25,20 +29,20 @@ outward from magnet physics without ever asking whether the game is fun yet.
 |---|---|--:|--:|--:|--:|
 | [01](01-foundation.md) | Foundation & sync | 23 | 21 | 2 | 0 |
 | [02](02-industrial-kit.md) | The industrial kit & material system | 47 | 40 | 6 | 1 |
-| [03](03-lighting-and-look.md) | Lighting, atmosphere & quality tiers | 17 | 14 | 2 | 1 |
-| [04](04-magnet-core.md) | The magnet -- the whole game in one system | 35 | 32 | 2 | 1 |
+| [03](03-lighting-and-look.md) | Lighting, atmosphere & quality tiers | 18 | 15 | 2 | 1 |
+| [04](04-magnet-core.md) | The magnet -- the whole game in one system | 37 | 34 | 2 | 1 |
 | [05](05-workshop.md) | The Workshop hub | 18 | 14 | 3 | 1 |
 | [06](06-boot-and-hud.md) | Boot, loading & the main HUD | 17 | 13 | 4 | 0 |
 | [07](07-zones-1-2.md) | Zone 1, Zone 2 and the first Service Hub | 34 | 27 | 7 | 0 |
-| [08](08-cargo-and-escape.md) | Rare cargo, extraction & guardians | 25 | 23 | 2 | 0 |
-| [09](09-robot.md) | The robot: rig, assembly and the Bay | 49 | 39 | 8 | 2 |
-| [10](10-arena.md) | The Scrap Arena | 47 | 41 | 5 | 1 |
-| [11](11-economy-and-save.md) | Economy, repair and persistence | 18 | 13 | 4 | 1 |
+| [08](08-cargo-and-escape.md) | Rare cargo, extraction & guardians | 29 | 27 | 2 | 0 |
+| [09](09-robot.md) | The robot: rig, assembly and the Bay | 50 | 39 | 9 | 2 |
+| [10](10-arena.md) | The Scrap Arena | 47 | 41 | 6 | 0 |
+| [11](11-economy-and-save.md) | Economy, repair and persistence | 19 | 14 | 4 | 1 |
 | [12](12-refresh-and-events.md) | Factory Refresh, Shifts & events | 19 | 4 | 6 | 9 |
 | [13](13-zones-3-12.md) | The remaining ten zones | 155 | 130 | 25 | 0 |
 | [14](14-endgame-and-launch.md) | Endgame, monetisation & launch | 68 | 19 | 46 | 3 |
-| | **Total** | **572** | **430** | **122** | **20** |
-| | *of which **MVP** (groups 01-12)* | *349* | *281* | *51* | *17* |
+| | **Total** | **581** | **438** | **124** | **19** |
+| | *of which **MVP** (groups 01-12)* | *358* | *289* | *53* | *16* |
 | | *post-gate (groups 13-14)* | *223* | *149* | *71* | *3* |
 
 ## The order, and why

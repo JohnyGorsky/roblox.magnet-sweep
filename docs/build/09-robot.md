@@ -16,13 +16,14 @@ part exists, or there will be a special case in a script forever.
 - [ ] **P0** Install sequence: crane, KRRRK, VRRRR, CLUNK, bolts, practice swing
 - [ ] **P0** Robot name + Roblox text filtering, in every display context
 - [ ] **P1** Duplicate handling: REINFORCE Mk I/II/III, or RECYCLE x2
-- [ ] **P1** Mobility sub-rigs: wheels, legs, tracks, hover x4
+- [ ] **P1** Part Archive wall logic -- a silhouette fills on SECURED, never on sighting
+- [ ] **P1** Mobility sub-rigs: wheels, legs, tracks, hover -- ONE shared locomotion clip, only Legs needs a walk cycle x4
 - [ ] **P1** Decorative actuators: HingeConstraint spin, PrismaticConstraint punch x2
 - [ ] **P2** `IKControl` head tracking
 - [ ] **P2** `IKControl` aim for ranged profiles
 
 ---
 
-**49 items** — P0 39 · P1 8 · P2 2
+**50 items** — P0 39 · P1 9 · P2 2
 
 > Counted by `tools/gen-build-manifest.py`. The last `xN` on a line is that line's count.

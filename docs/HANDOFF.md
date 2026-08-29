@@ -11,7 +11,7 @@ here reads as progress it is not.
 | | State |
 |---|---|
 | **Design** | ✅ Complete. The 87-section spec is redistributed into `docs/` with a coverage table |
-| **Task list** | ✅ Complete. 14 groups, **572 items**, each sized to one sitting |
+| **Task list** | ✅ Complete. 14 groups, **581 items**, sequenced into **28 jobs** to the MVP gate |
 | **Place** | ❌ **Not created.** One place is needed ([decision 0001](decisions/0001-one-place-not-two.md)) |
 | **Sync** | ❌ Not connected. `.jobconfig.json` paths are **guessed and marked UNVERIFIED** |
 | **Code** | ❌ None |
@@ -26,8 +26,9 @@ here reads as progress it is not.
   (the glossy-metal look, the palette, the material kit, the lighting recipe, quality tiers).
 - **The design pack** — 7 game docs, 16 system docs, 5 content docs (including the full **96-part**
   catalog), 13 decisions, the feature template, 2 roadmap docs.
-- **[The build manifest](build/README.md)** — 14 groups, 572 items (the MVP is **349** of them),
-  ordered MVP-first around [the gate](roadmap/mvp.md#the-gate) rather than by the spec's phase list.
+- **[The build manifest](build/README.md)** — 14 groups, 581 items (the MVP is **358** of them),
+  ordered MVP-first around [the gate](roadmap/mvp.md#the-gate) rather than by the spec's phase list,
+  plus **[the job ladder](build/job-order.md)** — the same work sliced into 28 jobs in dependency order.
 - **[PITFALLS.md](PITFALLS.md)** — 47 entries: *incident → rule → the check that catches it*, with the
   anticipatory ones labelled as such rather than dressed up as history.
 - **[Spec coverage](build/spec-coverage.md)** — all 87 sections mapped, 6 deliberate divergences, and an

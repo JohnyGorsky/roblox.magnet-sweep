@@ -7,7 +7,7 @@ In the MVP, not deferred -- [decision 0006](../decisions/0006-the-factory-refres
 - [ ] **P0** Scrap Refresh every 30-60s from the pool
 - [ ] **P0** Factory Cycle every ~4min: warning, machinery, retract unclaimed, respawn
 - [ ] **P0** The 20-second warning -- audible and visible zone-wide, while running
-- [ ] **P0** Per-zone part pool with rarity weighting
+- [ ] **P0** Per-zone part pool weighted by the RE-GRADED rarity (decision 0015)
 - [ ] **P1** Factory Shift every ~12min x5 (Heavy, Electric, Gold, Security, Chaos)
 - [ ] **P1** LEGENDARY PART DETECTED server notification
 - [ ] **P2** The eight dynamic events x8
