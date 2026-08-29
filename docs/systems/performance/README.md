@@ -55,12 +55,15 @@ sentence.
 
 ## The measurements that must happen, and when
 
-| Measure | Before |
-|---|---|
-| `MaxConcurrentPull` at 30 fps on a mid phone, during a Rush | the Rush ships |
-| Concurrent Arena robots at 30 fps, with parts, actuators and VFX | committing to 6 |
-| Workshop + Arena + two loaded zones, memory and frame time | the second zone ships |
-| HUD against the real safe area and reserved touch regions | the first HUD element ships |
-| Draw calls in the Workshop with full signage and PBR | the Workshop is signed off |
+| Measure | Fails if | Before |
+|---|---|---|
+| `MaxConcurrentPull` during a Rush | frame time > 33 ms on the reference mid-range phone | the Rush ships |
+| Concurrent Arena robots, with parts, actuators and VFX | 6 robots cannot hold 33 ms; then the number drops to whatever does | committing to 6 |
+| Workshop + Arena + two loaded zones | client memory exceeds the mobile budget, **or** frame time > 33 ms while standing in the Workshop looking at the Arena | the second zone ships |
+| HUD vs the real safe area and Roblox's reserved touch regions | any interactive element overlaps the thumbstick or jump-button rect, or falls outside the safe-area canvas, in the Device Emulator | the first HUD element ships |
+| Draw calls in the Workshop with full signage and PBR | the count rises above the budget set when the kit is signed off — **that budget does not exist yet and must be set first** | the Workshop is signed off |
 
-Each of these has a stated failure condition, so the check can actually fail.
+Each row states what failure looks like, so the check can actually fail
+([PITFALLS #2](../../PITFALLS.md#2-a-verification-that-could-not-fail)). The reference device and the
+memory and draw-call budgets are **not yet chosen** — choosing them is the first item of this list, not
+an implied prerequisite.

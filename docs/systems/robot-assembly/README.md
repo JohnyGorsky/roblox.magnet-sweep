@@ -63,6 +63,9 @@ Colander ✅   Blender Motor ✅   Fridge Door ❓   Giant Spoon ✅
 Frying Pan ❓  Serving Cart ✅   Toaster Coil ❓  Golden Tenderizer ❓
 ```
 
+A silhouette fills in on **`SECURED`** — reaching a Service Hub — not on sighting the part. The Archive
+records what you brought home, not what exists.
+
 Completing a zone's collection awards **cosmetics, never combat power**. The collector track must not
 become a power track, or completion stops being optional.
 
@@ -71,8 +74,26 @@ The Archive survives Overclock ([decision 0013](../../decisions/0013-overclock-n
 ## Naming
 
 Players name their robot — MAGNETRON, SPOONATOR, SCRAP KING, BOB. Shown at Arena entrance, on victory,
-on the leaderboard and in the Bay. Filtered through Roblox text filtering
-(`TextService:FilterStringAsync`), for every context it is displayed in.
+on the leaderboard and in the Bay.
+
+Filtering is **two calls, not one**, and Roblox removes games that skip it:
+
+1. `TextService:FilterStringAsync(text, fromUserId, Enum.TextFilterContext.PublicChat)` →
+   a `TextFilterResult`. This is **not** displayable text.
+2. `result:GetNonChatStringForUserAsync(viewerUserId)` — the documented case for exactly this
+   ("non-chat text that one specific user can see, **such as the name of a pet**"). It is age-aware per
+   recipient, so a nameplate is filtered per viewer.
+   Use `GetNonChatStringForBroadcastAsync()` **only** for text baked into something server-wide and
+   persistent that outlives its author.
+
+Server-only. Never per-keystroke. Wrap in `pcall` and **never display the name if filtering fails**.
+
+> ⚠️ `FilterStringAsync` **throws if `fromUserId` is not on the server** — so re-filtering a saved robot
+> name when its owner is absent (a leaderboard, an Arena robot whose owner left) will error. Decide the
+> storage form now: filter on *write* and store the filtered string, or accept that display needs the
+> owner present.
+>
+> `TextService:FilterAndTranslateStringAsync` is dead — all calls return an empty object.
 
 ## Build archetypes (section 52)
 

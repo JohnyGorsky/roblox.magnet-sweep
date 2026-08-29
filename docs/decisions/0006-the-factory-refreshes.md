@@ -28,7 +28,9 @@ the active Shift.
 
 - Rare-part hunting has a rhythm. Players learn the *cycle*, not the *map* — which is the intended
   skill.
-- A part in your hands when the warning fires is a real decision: run, or lose it.
+- The warning creates a real decision, but **not** about a part you are already holding: it is about
+  whether to commit to a part you can *see* and have not yet detached. Anything already carried is safe
+  from the timer.
 - Only unclaimed parts retract. Nothing already carried is taken by the timer, and nothing secured is
   ever at risk. See [0008](0008-secured-at-the-hub-not-in-hand.md).
 - The Shift gives the server a shared conversation topic every twelve minutes, which is cheap social

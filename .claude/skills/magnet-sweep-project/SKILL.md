@@ -40,7 +40,7 @@ The economy pinches at exactly one place, and everything else hangs off it:
 > **Do I spend this scrap on myself, or on keeping my robot alive?**
 
 Full vision: [docs/game/vision.md](../../../docs/game/vision.md).
-Source of record: `assets/MAGNET SWEEP.md` (the 88-section intake) plus `assets/concept_art/`
+Source of record: `assets/MAGNET SWEEP.md` (the 87-section intake) plus `assets/concept_art/`
 — read-only history; `docs/` is the living version.
 
 ## The repo is design memory; Studio is the code
@@ -82,7 +82,7 @@ Each links to its decision record.
    ([0004](../../../docs/decisions/0004-parts-are-content-rig-is-the-engine.md)) One hidden robot
    skeleton with fixed sockets. Every part is a model with a `RobotMount` attachment, a slot, an
    **animation profile** and stats. Adding a Toilet Brush Arm must never mean writing robot code.
-   ~20 animation profiles cover 84+ parts, not 84 × 20 animations.
+   ~20 animation profiles cover all 96 parts, not 96 × 20 animations.
 2. **The server owns capture, currency and Arena outcome.**
    ([0007](../../../docs/decisions/0007-server-owns-capture-and-reward.md)) The client may *feel* the
    magnet — pull VFX, local motion, sound — but "I secured the Giant Spoon", "I have 12,450 Coins" and
@@ -102,17 +102,21 @@ Each links to its decision record.
 6. **A rare part in hand is not owned.** Ownership transfers at the Service Hub `SECURED` moment and
    nowhere else. Unsecured cargo does not save on disconnect — that is the whole anti-extraction-exploit
    design ([0008](../../../docs/decisions/0008-secured-at-the-hub-not-in-hand.md)).
-7. **The factory refreshes; nothing is memorisable.**
+7. **Guardians are inert until you steal.** ([0014](../../../docs/decisions/0014-the-owning-guardian-chases.md))
+   Only the guardian whose part you took chases you, and it chases across zones. Caught **inside its own
+   territory** the part resets; caught **outside**, you ragdoll and it drops for anyone. A player
+   carrying nothing is never threatened — sweeping is 55 % of playtime and must stay relaxing.
+8. **The factory refreshes; nothing is memorisable.**
    ([0006](../../../docs/decisions/0006-the-factory-refreshes.md)) Scrap repopulates every 30–60 s,
    Robot Parts re-roll every ~4 min, and a server-wide Shift re-weights the pools every ~12 min. "The
    spoon is always here" must never become true.
-8. **Mobile is measured, not reasoned about.**
+9. **Mobile is measured, not reasoned about.**
    ([0012](../../../docs/decisions/0012-mobile-first-quality-tiers.md)) Use Studio's Device Emulator.
    Defender burned four rounds of rework deferring phone questions the emulator would have answered
    immediately. The glossy look ships as a **quality tier**, with a mobile floor that is never optional.
-9. **No placeholder assets.** Leave the slot empty and make it announce itself. A wrong sound is much
+10. **No placeholder assets.** Leave the slot empty and make it announce itself. A wrong sound is much
    harder to notice than a missing one.
-10. **Sound is a feature, not polish.** §15 gives every object family its own voice — bolt *tik*, coin
+11. **Sound is a feature, not polish.** §15 gives every object family its own voice — bolt *tik*, coin
     *ding*, spring *boing*, barrel *CLANG*. The game is explicitly headphone-recommended. Audio is not
     the last group in the manifest.
 

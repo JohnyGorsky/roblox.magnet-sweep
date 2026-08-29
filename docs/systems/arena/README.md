@@ -5,7 +5,9 @@ Persistent, server-wide, and visible from the Workshop. Not matchmaking.
 
 ## Shape
 
-- Target **4-6 active robots**. That number is a **measured performance budget**, not a design constant.
+- Target **4-6 active robots** — the spec's number. **Nothing has been measured yet**; this repo treats
+  the upper end as provisional until it is, because it is the single largest concurrent render cost in
+  the game. See [performance](../performance/README.md#the-measurements-that-must-happen-and-when).
 - Each player may release **one** robot.
 - Robots fight automatically. The player never controls one in combat.
 - If the Arena is full, the player enters a short queue.
@@ -62,6 +64,19 @@ heavy electricity at 10 % → collapse at 0.
 > untouched. The Arena robot is a disposable instance built from the Bay's robot. Death costs repair
 > scrap, never inventory.
 
+## When the owner leaves
+
+A deployed robot keeps fighting for a **~2 minute grace period**, then the crane withdraws it and its
+**HP is saved as it stands**.
+
+- A fight never ends mid-swing, and the Arena Core changes hands honestly rather than by teleport.
+- Nobody bleeds robot HP while offline and unable to react. Robot HP costs real scrap to repair, so
+  losing it while logged out would be a punishment for closing the game — the fastest way to make people
+  stop deploying at all.
+- On a small server the Arena does not empty the instant somebody alt-tabs.
+
+If the owner rejoins inside the grace period, the robot simply carries on.
+
 ## Repair
 
 **In the Bay:** scrap converts to HP. This is the pinch — see [economy](../economy/README.md).
@@ -105,6 +120,6 @@ halves of the game together, and they are what makes a player turn around and wa
 
 | Question | When |
 |---|---|
-| Can 6 robots with parts, actuators and VFX render at 30 fps on a mid phone? **Measure before committing** | before the Arena ships |
-| What happens to a deployed robot when its owner leaves the server? | before the Arena ships |
+| Can 6 robots with parts, actuators and VFX render at 30 fps on a mid phone? **Measurement, not a decision** | before the Arena ships |
 | Is there a spectator camera, or is watching strictly from the Workshop floor? | before launch |
+| Is the ~2 minute grace period the right length? Long enough that a fight resolves, short enough that a Core is not held by a ghost | when the Arena is tuned |

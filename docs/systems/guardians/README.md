@@ -4,15 +4,28 @@ One unique threat per zone. The reason extraction is dangerous rather than merel
 
 ## What a guardian does
 
-A guardian is not a health-bar enemy. It is a **denial threat**:
+A guardian is not a health-bar enemy. It is a **denial threat**, and it follows the steal-an-egg rule —
+[decision 0014](../../decisions/0014-the-owning-guardian-chases.md).
 
-- It patrols or activates on a Salvage Breach.
-- If it catches the player, the player is knocked down and **drops the rare part**.
-- ~5 seconds to recover it, then security reclaims it, or another player may take it.
-- The player loses **no** Coins, **no** magnet progression, **no** secured parts.
+- **Inert until a part is taken.** A player carrying nothing is *never* threatened. Guardians patrol,
+  look menacing, and ignore you completely while you sweep.
+- **Only the owning guardian activates** — the one whose part you took. Every other zone's guardian
+  ignores you, even as you run through its territory with stolen cargo.
+- **It pursues across zone boundaries.** It does not stop at its own edge.
+- **Caught inside its own territory → the part RESETS** to its spawn point. No recovery window.
+- **Caught outside its territory → you ragdoll and the part DROPS.** It lies there, neutral; any player
+  may take it. The guardian **gives up and returns home**.
+- The player loses **no** Coins, **no** magnet progression, **no** secured parts. Ever.
 
 There is no combat. The player has a magnet, not a weapon. The answer to a guardian is always movement,
 route choice and Magnetic Drive.
+
+> **Why inert-until-theft.** Sweeping is ~55 % of playtime and it is the ASMR pillar. A guardian that
+> harasses a player who has stolen nothing taxes the exact activity the game most wants you doing.
+
+> **The consequence for the world:** a guardian is scenery most of the time. That is intentional, and it
+> means guardians must be *interesting to walk past* — a patrol route you learn, an idle animation worth
+> watching, a sound that makes you glance up.
 
 ## The twelve
 
@@ -55,15 +68,34 @@ them, or an ability that closes routes (the Electrical Sentinel disabling a lane
 one). The player's counter-play stays the same verb — route and speed — while the space to use it
 shrinks.
 
+Depth also lengthens the *dangerous* stretch. A tier-1 theft needs you to clear one small zone; a
+tier-11 theft means outrunning an Orbital Defense Drone across the whole of Zone 11 before the reset
+stops being possible. That is the risk-versus-reward pillar expressed as distance rather than as
+damage.
+
 ## The ROBOT BREAKOUT event
 
 Section 54: security robots enter zones they do not belong to. This is the cheapest possible content
 multiplier for guardians and should exist from early on.
 
+## States
+
+```
+PATROL ──(a part is stolen from MY zone)──▶ PURSUE ──▶ CATCH
+   ▲                                          │          │
+   │                                          │     in my zone → RESET part
+   └────────── RETURN HOME ◀──────────────────┘     outside   → DROP part, then RETURN HOME
+                    ▲
+                    └── player reached a Service Hub, or died
+```
+
+`RETURN HOME` matters more than it looks: without it a guardian that chased a player four zones deep is
+stranded there, guarding nothing, in a chunk that may not even be streamed for anyone.
+
 ## Open
 
 | Question | When |
 |---|---|
-| Does a guardian pursue past a zone boundary? Streaming says no; drama says yes | before zone 2 ships |
-| Is the knockdown a ragdoll or a scripted stagger? Ragdoll is dramatic but harder to recover from consistently within 5 s | before the first guardian ships |
-| Do guardians threaten a player carrying nothing? If not, they are scenery 90 % of the time | before tier 1 is tuned |
+| How long is the give-up delay after a drop before the guardian turns for home? Too short and the ragdoll feels unpunished; too long and it loiters in someone else's zone | before the first guardian ships |
+| Can a *second* player trip a Breach in the same zone while its guardian is already chasing someone? One guardian, two thieves | before zone 2 ships |
+| Guardian speeds, detection ranges and catch radii — none are specified anywhere | per tier, in that tier's build group |

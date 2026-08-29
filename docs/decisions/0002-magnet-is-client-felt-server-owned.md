@@ -4,9 +4,10 @@
 
 ## Context
 
-Section 66 of the spec says the visual magnet physics may be client-assisted. Section 67 says the server
-stays authoritative for ownership, rare-part capture, Coins, zone unlock, robot inventory and Arena
-rewards.
+Section 67 of the spec says the visual magnet physics may be client-assisted, and that the server stays
+authoritative for ownership, rare-part capture, Coins, zone unlock, robot inventory, **Arena HP** and
+Arena rewards. (Section 66 is *Performance*, which is a related but separate constraint —
+[0005](0005-four-state-scrap-budget.md).)
 
 These are easy to state and easy to blur. A pull that is simulated on the server feels laggy on a phone
 and costs the server dearly. A pull that is *decided* on the client is a free-money exploit.

@@ -33,7 +33,11 @@ Roughly ×1.5 per zone. **Final values must be playtested.**
 
 ## Service Hubs (section 18)
 
-One approximately every two zones. Each contains: Recycler · Magnet Upgrade terminal · Repair terminal ·
+**Six hubs, after zones 2, 4, 6, 8, 10 and 12.** Evenly spaced, so a rare part is never more than two
+zones from safety and the longest extraction stays inside §22's 20-45 second target. Predictable enough
+that a player can plan a run — which matters once cargo is slowing them down.
+
+Each contains all seven of §18's fixtures: Recycler · Magnet Upgrade terminal · Repair terminal ·
 **Robot Part Secure station** · Checkpoint · Arena status display · **MagRail** connection back to the
 Workshop.
 

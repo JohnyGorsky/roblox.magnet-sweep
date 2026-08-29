@@ -25,7 +25,9 @@ Use these exactly. Consistency here is what makes the UI, the docs and the code 
 | **Salvage Breach** | the alarm when a part is torn free | alert, alarm state |
 | **SECURED** | a part reaching a Service Hub | banked, saved, deposited |
 | **Service Hub** | the mid-factory safe station | checkpoint, outpost |
-| **Factory Refresh** | the ~4 min part re-roll | reset, respawn |
+| **Scrap Refresh** | the 30-60 s scrap repopulation | respawn, restock |
+| **Factory Cycle** | the ~4 min rare-part re-roll | reset, refresh *(as a noun)* |
+| **FACTORY REFRESH** | the **player-facing banner** the Factory Cycle fires | — |
 | **Factory Shift** | the ~12 min server modifier | event, buff |
 | **Arena Core** | the contested centre | objective, point |
 | **Arena Heat** | escalating damage while holding | decay, timer |

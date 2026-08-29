@@ -71,10 +71,50 @@ Full VFX vocabulary: [`magnet-sweep-style` skill](../../../.claude/skills/magnet
 Power 10 · Radius 12 · Drive 16 · Capacity 30. Enough to pull screws, nuts and washers, and nothing
 else. That limitation is the tutorial.
 
-## Open
+## Pull force: strain, then refuse
+
+Decided. Weight relative to Magnet Power drives a curve with a hard wall at the top:
+
+```
+POWER 80
+
+bolt   (w 2)    ●━━━━━━━━▶🧲   snaps in, instant
+crate  (w 60)   ●━━━ ━━ ━ ▶🧲   slow, straining, arcs
+SPOON  (w 120)  ●∿∿∿  ✦✦✦       shakes, sparks, GRRRRRR — never moves
+                                "MAGNET POWER 120 REQUIRED"
+```
+
+- **Well under your Power** — fast, snappy, satisfying. This is most of the sweep.
+- **Near your limit** — visibly slower, with strain audio and heavier arcs. The object is *coming*, and
+  you can feel that it is hard work.
+- **Over your limit** — it reacts violently and never breaks free.
+
+The third band is the important one. A hard step with no reaction would read as scenery or as a bug; a
+pure curve with no wall would dissolve the Magnet Power gate and with it the whole progression spine.
+**The object itself teaches you what to upgrade** — no tooltip required.
+
+## Radius: both ranges, REACT wider than PULL
+
+Upgrading Magnet Radius grows both, with **REACT sitting ~40 % beyond PULL** at every level.
+
+```
+        ╭──────── REACT ────────╮
+        │   ╭──── PULL ────╮    │
+        │   │      🧲      │    │
+        │   ╰──────────────╯    │
+        ╰───────────────────────╯
+     things shake here    things come here
+```
+
+Objects start shaking and sparking before they are in collection range, so the field reads bigger than
+it is, and you can *see* your reach arriving before it arrives. That shake ring is free advertising for
+the next Radius upgrade, and REACT is the cheap state
+([decision 0005](../../decisions/0005-four-state-scrap-budget.md)) — so the spectacle costs almost
+nothing.
+
+## Open — needs measurement, not a decision
 
 | Question | When |
 |---|---|
-| Is pull force a curve or a step at the weight threshold? A hard threshold reads as broken; a soft one makes gates fuzzy | before the first prototype is tuned |
-| Does Radius affect REACT range, PULL range, or both? | same |
-| What is `MaxConcurrentPull` on a mid-range phone during a Rush? **Measure** | before the Rush ships |
+| What is `MaxConcurrentPull` on a mid-range phone during a Rush? **Measure in the Device Emulator** | before the Rush ships |
+| Does the ~40 % REACT margin hold up at large Radius values, or does it need to taper? | when Radius upgrades are tuned |

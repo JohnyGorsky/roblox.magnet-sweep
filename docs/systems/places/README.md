@@ -53,7 +53,10 @@ deliberately:
 
 - Access: who can join, and from where.
 - Social slots: on or off.
-- `MaxPlayers` — this drives the Arena's 4-6 robot target and the streaming budget together.
+- **`MaxPlayers` = 12.** Decided. With 4-6 Arena slots, a third to a half of the server can have a
+  robot deployed at once — contested enough to matter, rarely a long queue. Twelve also keeps the
+  streaming and physics budget survivable in one place holding a hub, an arena and a twelve-zone
+  corridor.
 - `StreamingEnabled` and its radius/behaviour. **This one is not optional here.**
 
 ## Open
@@ -61,4 +64,4 @@ deliberately:
 | Question | When |
 |---|---|
 | The place does not exist yet — it needs creating and its id recording | before job 002 |
-| `MaxPlayers`: what number makes a 4-6 robot Arena feel contested but not queued? | before the Arena ships |
+| Does 12 still hold once the Arena robot count is **measured**? If 6 robots will not render, the Arena slots shrink and 12 may be too many players per slot | when the Arena is measured |

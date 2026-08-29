@@ -74,8 +74,8 @@ Five boards, five different playstyles rewarded. Use `OrderedDataStore`; see the
 
 ## Overclock (section 79)
 
-[Decision 0013](../../decisions/0013-overclock-not-rebirth.md). Resets zone access, Coins, and magnet
-upgrade levels. **Keeps** robot parts, the collection archive, cosmetics, Arena stats and the robot's
-name. Awards a permanent **Magnet Core Level**.
+[Decision 0013](../../decisions/0013-overclock-not-rebirth.md). Resets four things — zone access,
+Coins, magnet upgrade levels and Drive upgrades. **Keeps** robot parts, the collection archive,
+cosmetics, Arena stats and the robot's name. Awards a permanent **Magnet Core Level**.
 
 The gate power curve must scale with Magnet Core Level, or the second run is the first run again.

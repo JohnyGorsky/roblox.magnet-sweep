@@ -1,0 +1,429 @@
+# PITFALLS — mistakes already paid for
+
+**Read this before building.** It is not a "be careful" page.
+
+Every entry names a real incident from another game in this workspace, the rule that came out of it, and
+— most importantly — **the check that catches it**. A rule without its incident gets rationalised away; a
+rule without a check is decoration.
+
+Sources: The Last Tide's 31 findings and its sea failure, Roblox Jungle's job records, Roblox Defender's
+mobile rework, ELEVATOR 13's own pitfalls page, and `roblox.workspace/GROUND-RULES.md` §7 and §8 — which
+exist *because* of the Tide sea failure.
+
+**Entries 1-35, 42 and 45-47 each cite a real, traceable incident.** Entries 36-41, 43 and 44 are
+**anticipatory** — they name a failure mode this game's design makes likely, not one already paid for.
+They are labelled where they appear.
+
+Part 6 was written *by* this repo's first independent review, which found seven wrong engine claims in
+the design pack it was reviewing. Those are the freshest entries here and the ones most likely to bite
+again.
+
+MAGNET SWEEP starts with zero code. That is exactly when these are cheap to install, and exactly when
+they get skipped.
+
+---
+
+## Part 1 — Verification
+
+### 1. Verified in Edit, where the bug could not appear
+
+> **The incident.** A cloud-bank VFX drew ~129 sprites 340 studs from the camera, permanently, reading as
+> rectangular blocks on the horizon. It is a **client** effect, so every Edit screenshot showed a clean
+> sea. **Six consecutive rounds of "it's fixed now"** were reported from screenshots structurally
+> incapable of showing the bug. The user's sentence — *"editor is fine, in game it sucks"* — was the
+> entire diagnosis.
+
+**Rule:** the editor is for authoring. **It is never evidence.** Reproduce in Play, at the reporter's
+camera angle, before forming any hypothesis.
+
+**Check:** before reporting anything fixed — *was this observed in Play, at the player's camera?* If Edit
+was the more convenient place to measure, treat that as a reason to **distrust** the result.
+
+**Aimed at MAGNET SWEEP:** the magnet field, every pull trail, every arc, the whole post-processing
+chain and the entire HUD are client-side. Arena robots are spawned at runtime. Scrap is pooled at
+runtime. **Almost nothing in this game exists in an Edit session.**
+
+### 2. A verification that could not fail
+
+> **The incident.** `tools/luau-analyze.sh` does `cd "$(dirname "$0")/.."`. A baseline built by writing
+> `git show HEAD:<file>` into a temp directory and passing a **relative** path therefore analysed the
+> repo's own working copy — the file was compared *against itself*. "No new diagnostics" was reported
+> twice, from a check structurally incapable of failing.
+
+**Rule:** state what a failure would have looked like. If you cannot, the check is decoration.
+
+**Check:** every verification row in this repo's docs and plans names its failure condition.
+
+### 3. A world fact asserted from a constant
+
+> **The incident.** `OCEAN_EXTENT_Z.min` said `-1000`. The water was actually filled to `-3070`. A
+> visible world edge was reported to the user **that does not exist.**
+
+**Rule:** never assert a world fact from a constant. Measure it.
+
+**Here:** "we are under `MaxConcurrentPull`" is a **count of unanchored parts taken during a Magnet
+Rush**, never a reading of the config value.
+
+### 4. No "before" kept for a visual change
+
+> **The incident.** Water was brightened from 3.2 % to 8.5 % luminance for a "sunny day". That collapsed
+> the sea/sky value contrast — which is what the eye reads as texture and distance — so the sea appeared
+> to stop a few hundred studs out. **The user found it, not Claude**, because no before/after comparison
+> was ever made.
+
+**Rule:** every visual change gets a before and after from the **same camera**. Keep the before.
+
+**Here:** this game's whole look is a materials-and-lighting stack. One roughness value or one
+`EnvironmentSpecularScale` tweak changes every metal surface in the game at once.
+
+### 5. Two failed fixes, and the frame was never re-opened
+
+> **The incident.** Six consecutive rounds inside a wrong frame — water colour, atmosphere, fog,
+> streaming, a mesh ocean — while the cause was a client script nobody had looked at.
+
+**Rule:** two failed fixes for the same symptom → stop and re-open the diagnosis from zero, including
+*"am I even in the right subsystem?"*
+
+**Check:** after the second failure, a fresh-eyes agent is **mandatory** before a third attempt, and it
+is **not told the theory** (GROUND-RULES §8).
+
+### 6. Substituting your framing for the user's words
+
+> **The incident.** "The problem is the sea horizon", said three times, unchanged, while the
+> investigation kept re-framing it.
+
+**Rule:** a complaint repeated **unchanged** means the model is wrong, not that the user missed the fix.
+The user's words are the specification.
+
+### 7. Finding real bugs is not finding the reported bug
+
+> **The incident.** An investigation turned up no sun disc in any sea state, `SunRaysEffect` at intensity
+> 0, a bloom threshold above anything on screen, and no `ColorCorrectionEffect` at all. All real, all
+> worth fixing, **and none of them was what the user reported.**
+
+**Check:** ask explicitly — *does fixing this account for the symptom I was given?*
+
+### 8. One reviewer, never told the theory
+
+**Rule:** every job uses at least one independent agent, given the *symptom or requirement* and the repo
+— never the hypothesis. A reviewer handed the conclusion just confirms it.
+
+### 9. Coverage by link is not coverage
+
+> **The incident.** ELEVATOR 13's spec-coverage table marked three sections "covered" because a link
+> resolved — the linked page did not actually contain the content. Separately, a manifest reported 319
+> items by counting `×N` rows as one item each; the honest count was 577.
+
+**Rule:** a coverage table checks that the named items **arrived**, not that a link resolves. Count
+`×N` rows as N.
+
+---
+
+## Part 2 — Studio & sync
+
+### 10. Studio Sync is two-way, and deleting an instance deletes the FILE
+
+> **The incident.** Recorded on Jungle. A tidy-up in the Studio Explorer removed source files from disk.
+
+**Rule:** treat a Studio-side delete as `rm`. Scope every cleanup to `Workspace` only.
+
+### 11. Reopening a place silently drops the sync connection
+
+**Check:** confirm sync is live before trusting that an edit landed. A file saved into a dropped
+connection looks exactly like a file that synced.
+
+### 12. Sync layout does not transfer between games
+
+> **The incident.** Tide job 003 assumed Jungle's nested Rojo layout. Tide is **flat**. ELEVATOR 13 then
+> inherited the same unverified guess rather than resolving it.
+
+**Rule:** probe the layout over MCP, per place, and write down what was **observed**.
+
+**Here:** `.jobconfig.json` is marked `UNVERIFIED` and job 002 owns proving it. **Do not cite those paths
+as fact.**
+
+### 13. File suffixes are traps
+
+On Tide: `.luau` = `ModuleScript`, `.server.luau` = `Script`/Server, `.local.luau` = `LocalScript`,
+`.module.luau` is **not recognised at all** — and **`.client.luau` in `StarterPlayerScripts` runs
+twice**. None of this is proven here. Job 002 proves it.
+
+### 14. Studio Sync does not reach a running Play session
+
+And: **always stop a Play session you started.** Leaving one running blocks both sync and the Edit
+datamodel, and it is the user's Studio.
+
+### 15. A failed or stale `require` is cached for the whole Edit session
+
+A module that errored once keeps returning the error until the place is reopened. A "fix" that appears
+not to work may simply be cached.
+
+### 16. `execute_luau` runs in a separate Luau context
+
+**Rule:** verify through shared Instances — attributes, `leaderstats`, DataStore — never through a
+module's internals. Play-mode and Edit-mode DataStores differ.
+
+### 17. `execute_luau` re-runs module scope and rebinds remotes
+
+> **The incident.** `require`ing a live server module from `execute_luau` re-ran its top-level scope and
+> rebound `OnServerInvoke`, breaking the running game.
+
+**Rule:** **never `require` a live server module from `execute_luau`.**
+
+### 18. The command bar is privileged
+
+The command bar and `execute_luau` run with plugin capability. A gated property write that succeeds
+there may fail in a real script. **Verify gated writes in an actual Play script.**
+
+### 19. `screen_capture` with `camera_position` locks the camera
+
+It leaves the Edit camera `Scriptable`, which locks the user's navigation. Reset `CameraType = Custom`
+afterwards.
+
+### 20. `screen_capture` cannot show prompts, and a timeout means nothing is drawing
+
+Captures never render `ProximityPrompt` bubbles — press the key or read `PlayerGui.ProximityPrompts`
+instead. And a capture that times out means the client **is not rendering**: `RenderStepped` is not
+firing. Never drive an effect's completion from inside a frame loop that a capture will stall.
+
+---
+
+## Part 3 — Assets & models
+
+### 21. Collision fidelity — a pipeline default, and a property scripts cannot set
+
+Two separate traps that look like one.
+
+> **The incident.** Recorded on this workspace: Meshy imports arrive with `CollisionFidelity = Box`, so
+> players could not walk under a model's wings or through its gaps.
+
+**Rule 1:** *Box* is not the **engine** default — the enum default is `Default` (voxel convex
+decomposition). It is what **Meshy and Creator Store imports arrive set to**. Fix it at import; do not
+write docs claiming the engine does it.
+
+**Rule 2 — the sharper one:** `CollisionFidelity` write access is **`PluginSecurity`** and the property
+is `NotReplicated`. The docs are explicit: it "cannot be read or manipulated by scripts during runtime."
+It belongs in the **import checklist**, never in a mount or spawn function.
+
+**Check:** the Studio command bar *can* write it (see [#18](#18-the-command-bar-is-privileged)) — so it
+will appear to work exactly where you are most likely to test it, and fail in a real `Script`.
+
+**Here:** the catalog is spoons, forks, crane hooks, colanders and vault doors, so
+`PreciseConvexDecomposition` is right for the ones with a gap a player passes through — but it is
+expensive and not a blanket default for 96 parts. Mounted robot parts are `CanCollide = false` and
+`Massless = true` anyway, so for most of them fidelity never matters —
+see [systems/robot-rig](systems/robot-rig/README.md#4-mounted-parts-are-visual-they-are-not-physics).
+
+### 22. `PivotTo` vs `PrimaryPart`
+
+> **The incident.** `Model:PivotTo()` places by the pivot — but a `PrimaryPart` silently overrides
+> `WorldPivot`, so imported meshes landed 100+ studs off.
+
+**Here:** this is *exactly* the part-mounting mechanic. Do not place parts by pivot. Align the
+`RobotMount` attachment to the socket explicitly, then weld.
+
+### 23. A server-made NPC's rig is in its rest pose
+
+> **The incident.** On Jungle, a server-spawned NPC's `Animator` reported track weight `0.00` and the
+> server-side rig held the rest pose. Animations play and replicate; **the server's copy does not move.**
+
+**Rule:** never solve anything from a limb's position on the server.
+
+**Here, this is a live footgun:** Arena combat is server-authoritative and the robots are animated. **Hit
+detection must come from AI state + `RobotRoot` CFrame + a scripted hitbox — never from where the spoon
+visually is.**
+
+### 24. Placeholders are worse than empty slots
+
+**Rule:** leave the slot empty and make it announce itself. A wrong sound or a stand-in texture is much
+harder to notice than a missing one, and placeholders are how the wrong asset ships.
+
+### 25. An object rendering where nothing exists
+
+Check `LevelOfDetail = StreamingMesh` before assuming a ghost instance. Roblox renders an imposter for a
+streamed-out mesh; the DataModel is telling the truth.
+
+### 26. Mockups are direction, not spec
+
+Concept art gives colour and mood. **Never build a feature because it appears in a painting** — and never
+report one as existing because the art shows it.
+
+### 27. Asset sourcing has a fixed order
+
+Search our registry and the Creator Store **first**, then write a *searchable spec* (length, loop,
+format, and what it must **not** contain), presented as a **table**, one asset per row. The human finds
+and supplies the id. Scan every inserted model for scripts before Play.
+
+---
+
+## Part 4 — Architecture & process
+
+### 28. A hardcoded instance path between two systems
+
+> **The incident.** A hardcoded path between two Tide systems broke when one moved.
+
+**Here, this one is upgraded from a smell to a crash.** The factory streams. A cross-zone instance
+reference is a `nil` index the moment the target streams out —
+[decision 0003](decisions/0003-forward-is-the-only-direction.md).
+
+### 29. Shipping something nothing else knows about
+
+> **The incident.** Tide job 017 shipped storm VFX that nothing ever called.
+
+**Check:** for every new module, name the caller. If there is none, it is not shipped.
+
+### 30. Mobile deferred is mobile reworked
+
+> **The incident.** Defender jobs #094-#099 burned **four rounds of rework** deferring phone questions
+> that the Device Emulator would have answered immediately.
+
+**Rule:** measure in the emulator. Ask before switching Studio into it — it takes over the user's session
+— and say what is being measured. A pixel `MinSize` floor is not a measurement; it breaks on high-DPI.
+
+### 31. `IMPLEMENTED` is not `VERIFIED`
+
+`IMPLEMENTED` = code exists. `VERIFIED` = a playtest exercised it and the result was recorded.
+
+### 32. The "waiting on you" list grows silently
+
+> **The incident.** Tide's list reached nine rows, each individually reasonable, together a backlog
+> nobody was tracking.
+
+**Rule:** keep [HANDOFF.md](HANDOFF.md)'s list short and re-read it every job.
+
+### 33. Place settings nobody chose
+
+> **The incident.** Tide shipped `Fully Open` access with social slots enabled. Both became findings.
+
+**Here:** `StreamingEnabled` is not merely a setting to choose — it is load-bearing for a one-place game
+with a twelve-zone corridor. Decide it before anyone can join.
+
+### 34. A live listing that grants nothing
+
+> **The incident.** A game pass left `IsForSale` but unwired is buyable **from the website store page**
+> and delivers nothing. Real money, no product.
+
+**Check:** before launch, sweep every listing against what the code actually grants.
+
+### 35. Editing a script outside the system you were asked to work on
+
+Confirm which system and which place owns a file before editing it. Ask if unsure.
+
+---
+
+## Part 5 — Traps specific to this game
+
+> Except #42, these are **anticipatory**: predicted from this design, not yet paid for. They earn their
+> place by naming a check, but do not cite them as history.
+
+### 36. The physics budget decays one unanchored object at a time
+
+The four-state model ([0005](decisions/0005-four-state-scrap-budget.md)) only holds if **every** object
+returning to the pool is re-anchored. One missed `Anchored = true` on one code path and the cap silently
+stops meaning anything — and the symptom is a slow framerate decline over minutes, which is the hardest
+kind of bug to attribute.
+
+**Check:** count unanchored parts during a Magnet Rush. It must not exceed `MaxConcurrentPull`.
+
+### 37. Combat solved from where the limb looks like it is
+
+See #23. This is the same trap, and this game walks straight into it: server-authoritative combat between
+client-animated rigs. Write the hitbox contract before the first attack profile.
+
+### 38. Config-first decays one constant at a time
+
+The first `16` typed inline instead of `Config.BaseDriveSpeed` is not a problem. The fortieth is a game
+that cannot be balanced. It never arrives as a decision.
+
+**Check:** grep for numeric literals in gameplay modules during review.
+
+### 39. The colour language decays one green pipe at a time
+
+Green means recycle. Orange means repair. Cyan means magnet. The first decorative green pipe is harmless;
+after twenty, colour no longer tells the player anything and the HUD has to do all the work.
+
+### 40. Pay-to-win arrives as a "small convenience"
+
+Nobody proposes "+50 % robot damage". They propose a slightly better repair rate, a slightly shorter
+cooldown, a small head start. [Decision 0011](decisions/0011-robux-never-buys-arena-power.md)'s test is
+the only defence: **could two identical players, one paying, produce a different Arena outcome?**
+
+### 41. A part lost in the Arena would kill the game
+
+Panels pop off on death. The **owned** part never does. Anything that makes players afraid to deploy
+their robot removes half the game — and the Arena is already the half that runs unattended.
+
+### 42. Placing objects at a height taken from a constant
+
+> **The incident.** On Jungle, a placement routine trusted `CLEAR_Y = 15` as the ground height. Terrain
+> voxels snap to a `RES = 4` grid, so the real surface was ~17 and the props were buried. The fix was to
+> **raycast** for the surface. The same root cause recurred twice more (Jungle jobs 088, 090).
+
+**Rule:** never take a world height from a constant. Measure the surface at the point you are placing.
+This is [#3](#3-a-world-fact-asserted-from-a-constant) again, in its most expensive form.
+
+**Check:** every runtime placement raycasts, and handles the raycast returning `nil`.
+
+**The separate, adjacent hazard:** under Instance Streaming a raycast can also return `nil` simply
+because the geometry is not loaded on that client. Distinguish "the ground is at 17, not 15" from "the
+ground is not here yet" — they need different handling, and treating the second as the first is how you
+get a prop at the world origin.
+
+### 43. The refresh warning nobody hears
+
+A Factory Refresh that silently retracts a part the player was walking toward reads as a bug, not a rule.
+The 20-second warning must be **audible and visible from anywhere in the zone, while running**.
+
+### 44. Deferring the Factory Refresh
+
+It is tempting to build zones 1 and 2 with static spawns "for now". Every system built that way encodes
+assumptions the refresh then breaks, and the rework lands late. It is in the
+[MVP](roadmap/mvp.md) for that reason.
+
+---
+
+## Part 6 — Engine facts
+
+### 45. The rendered docs site misreports deprecation and ordering
+
+> **The incident.** This repo's own job 001. Three separate engine facts were taken from
+> `create.roblox.com` and were wrong there: `Enum.AnimationPriority`'s ordering, a class-level
+> deprecation on `AnimationController`, and a deprecation bled onto `TextService:FilterStringAsync` from
+> the adjacent `FilterAndTranslateStringAsync`. Two of the three had already propagated into the shared
+> `roblox-animation` skill, and from there into this game's robot architecture.
+
+**Rule:** for **deprecation status, security levels and enum ordering**, the rendered docs site is not a
+usable source. Read the raw YAML, which carries the real `tags:` / `security:` / `deprecation_message:`
+blocks:
+
+```
+https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/<classes|enums>/<Name>.yaml
+```
+
+Cross-check `setup.rbxcdn.com/version-<hash>-API-Dump.json` when it matters.
+
+**Check:** any doc in this repo asserting "X is deprecated", "X is superseded", "only a plugin can write
+X", or an enum's *order* names where it was read from. If the answer is the docs website, it is not yet
+verified.
+
+### 46. An enum that does not order by its numeric value
+
+> **The incident.** `Enum.AnimationPriority.Core` has value **1000** while `Action4` has **5** — and
+> `Core` is the **lowest** priority of the seven. This page's own game got it backwards in its first
+> draft, inherited from the shared skill.
+
+**Rule:** never infer an enum's semantics from its numeric values.
+
+**Check:** an attack clip set to `Core` loses to `Idle`. If a robot's attack animation "does not play",
+check the priority before checking anything else.
+
+### 47. A capability that works in the command bar and fails in a Script
+
+> **The incident.** `TriangleMeshPart.CollisionFidelity` is `PluginSecurity` on write and documented as
+> not manipulable by scripts at runtime — but the Studio command bar has plugin capability, so it works
+> there. Anything tested only in the command bar looks supported.
+
+**Rule:** a gated property write is verified in a **real Play script**, never in the command bar or via
+`execute_luau`.
+
+**Check:** for each property a design says to set at runtime, confirm its write `security:` is `None`.

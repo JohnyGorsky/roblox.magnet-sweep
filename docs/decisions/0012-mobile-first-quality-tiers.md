@@ -16,10 +16,12 @@ have answered immediately.
 
 - **Design to a mid-range phone.** That is the floor, and the floor is never optional.
 - The glossy look ships as a **quality tier** on top of that floor, not as the baseline.
-- `Lighting.Technology = Future` is set place-wide (it cannot be per-player; Roblox already degrades it
-  on low-end clients). Everything else the tier controls is client-side and switchable by a
-  `LocalScript`: post-processing effects, decorative light range, particle rates, PBR versus
-  `Reflectance` fallback, and `MaxConcurrentPull`.
+- The lighting style is a **place** setting, chosen in Studio by a human. `Lighting.Technology` has been
+  superseded by `LightingStyle` (`Realistic` now carries the old `Future` role), and **none of these are
+  script-writable** — `Lighting.Technology` is `RobloxScriptSecurity` on read *and* write. Roblox already
+  degrades lighting on low-end clients. Everything else the tier controls is client-side and switchable
+  by a `LocalScript`: post-processing effects, decorative light range, particle rates,
+  `MaterialVariant` PBR versus a `Reflectance` fallback, and `MaxConcurrentPull`.
 - The tier is chosen from a **measured frame time**, never from `TouchEnabled` alone. A tablet is not a
   low-end phone; a cheap laptop is not a high-end PC.
 - **Mobile questions are measured in the Device Emulator**, which gives real `TouchEnabled`, real

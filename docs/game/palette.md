@@ -13,9 +13,10 @@ tables here; they will drift.
 signal colours, chrome catching coloured light, electric-blue arcs, neon signs naming every station.
 
 **There are no shaders.** Roblox exposes no custom shader language. "Glossy metal" means five things
-together: PBR `SurfaceAppearance`/`MaterialVariant` with metalness and low roughness; `Future` lighting;
-`EnvironmentSpecularScale`; a `Sky` + `Atmosphere` for the metal to actually reflect; and a
-Bloom + ColorCorrection + SunRays post chain. Miss one and metal reads as flat paint.
+together: PBR maps (`MaterialVariant` on Parts, `SurfaceAppearance` on MeshParts — **not**
+interchangeable); `LightingStyle = Realistic`; `EnvironmentSpecularScale`; a `Sky` + `Atmosphere` for
+the metal to actually reflect; and a Bloom + ColorCorrection + SunRays post chain. Miss one and metal
+reads as flat paint.
 
 **Colour is a gameplay system.** Each signal colour owns exactly one meaning and is never reused for
 decoration:

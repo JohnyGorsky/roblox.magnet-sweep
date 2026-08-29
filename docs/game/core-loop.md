@@ -20,7 +20,10 @@
 15  Go deeper
 ```
 
-## Three nested loops
+## Three nested loops *(derived)*
+
+The spec does not break the loop into nested cycles or give durations. This framing and its numbers are
+a job 001 proposal, offered to make the pacing arguable — not a specified value.
 
 | Loop | Length | Question it answers |
 |---|---|---|
@@ -64,6 +67,6 @@ also the cheapest possible source of moment-to-moment tension, and it costs noth
 
 ## Where the player spends time
 
-A healthy session is roughly: 55 % sweeping, 20 % extraction and escape, 15 % Workshop (recycle,
-upgrade, install, repair), 10 % watching the Arena. If Workshop time climbs much above that, the menus
+A healthy session is roughly *(derived — a target to test against, not a spec value)*: 55 % sweeping,
+20 % extraction and escape, 15 % Workshop (recycle, upgrade, install, repair), 10 % watching the Arena. If Workshop time climbs much above that, the menus
 have become the game.

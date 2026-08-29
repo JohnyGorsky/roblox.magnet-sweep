@@ -22,8 +22,9 @@ this repo is the authority on what it *should* be, and why.
 | `Jobs/` | Worked jobs: `intake` → `implementation-plan` → `final-summary` + `changelog` |
 | `Planned/` | Queued ideas, one file each. Promoting one = opening a job |
 | `todo/` · `findings/` | Fast capture queues: small tasks, and deferred bugs |
-| `studio_game/` | The Rojo sync root. **One place.** Empty until the sync probe job |
-| `assets/concept_art/` | The signed original specification and key art. Read-only history |
+| `studio_game/` | The Studio Sync root. **One place.** Empty until the sync probe job |
+| `assets/MAGNET SWEEP.md` | The original 87-section specification. Read-only history |
+| `assets/concept_art/` | The key art. Read-only history |
 | `assets/registry/` | What this game uses and what it still needs |
 
 ## One place, not two

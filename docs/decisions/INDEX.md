@@ -18,6 +18,29 @@ new record that says so and link it from here.
 | [0011](0011-robux-never-buys-arena-power.md) | Robux never buys Arena power | Convenience, cosmetics and spectacle only |
 | [0012](0012-mobile-first-quality-tiers.md) | Mobile sets the budget; gloss is a tier | The floor is never optional; measure in the emulator |
 | [0013](0013-overclock-not-rebirth.md) | Overclock, not rebirth | The robot survives the reset |
+| [0014](0014-the-owning-guardian-chases.md) | The owning guardian chases you | Its territory is the finish line; outside it, the part can only be dropped |
+| [0015](0015-rarity-is-re-graded.md) | Rarity is re-graded | The spec made `Rare` the most common grade in the game |
+
+## Answered by the user, 2026-08-29
+
+Sixteen open questions were put through the wizard and settled. The load-bearing ones became
+[0014](0014-the-owning-guardian-chases.md) and [0015](0015-rarity-is-re-graded.md); the rest were
+written into their system docs:
+
+| Answer | Where it lives |
+|---|---|
+| Pull force strains, then refuses | [magnet](../systems/magnet/README.md#pull-force-strain-then-refuse) |
+| Radius grows both ranges, REACT ~40 % wider | [magnet](../systems/magnet/README.md#radius-both-ranges-react-wider-than-pull) |
+| Guardians are inert until a part is stolen | [0014](0014-the-owning-guardian-chases.md) |
+| Uncollected scrap auto-recycles on disconnect | [save-data](../systems/save-data/README.md) |
+| Every Arm part takes one socket; no two-handed parts | [robot-rig](../systems/robot-rig/README.md) |
+| One locomotion clip, four mobility sub-rigs | [robot-rig](../systems/robot-rig/README.md) |
+| A deployed robot gets a ~2 min grace period when its owner leaves | [arena](../systems/arena/README.md#when-the-owner-leaves) |
+| The Part Archive records **secured**, not discovered | [save-data](../systems/save-data/README.md#the-part-archive-stores-secured-not-discovered) |
+| Six Service Hubs, after zones 2/4/6/8/10/12 | [factory](../systems/factory/README.md#service-hubs-section-18) |
+| `MaxPlayers` = 12 | [places](../systems/places/README.md) |
+| Robot paints apply **per part** | [cosmetics](../content/cosmetics.md) |
+| Magnet Core Level = starting Power + a gate discount | [0013](0013-overclock-not-rebirth.md#how-magnet-core-level-bends-the-curve) |
 
 ## The three most easily broken by accident
 

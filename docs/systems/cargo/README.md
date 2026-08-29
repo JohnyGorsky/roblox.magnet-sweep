@@ -54,13 +54,30 @@ Target: **20-45 seconds**. This is where Magnetic Drive stops being a comfort st
 
 ## Getting caught
 
-Section 23. A guardian catch knocks the player down and drops the part.
+[Decision 0014](../../decisions/0014-the-owning-guardian-chases.md) — the steal-an-egg rule. What a
+catch costs you depends entirely on **which side of the zone boundary** it happens.
 
-- ~**5 seconds** to recover it, then security reclaims it — or another player may take it (section 24).
-- The player does **not** lose Coins, magnet progression or previously secured parts.
+| Where | Outcome |
+|---|---|
+| **Inside the guardian's own zone** | the part **RESETS** to its spawn point. No recovery window. Go and take it again |
+| **Anywhere else** | you ragdoll, the part **DROPS** and goes neutral. Any player may take it. The guardian gives up and goes home |
 
-Short ownership protection after detachment prevents casual theft; the neutral window after a failed
-recovery creates tension without constant griefing.
+So the escape has two halves:
+
+```
+🚨 BREACH ──── sprint ────▶ BOUNDARY ──── walk ────▶ 🏠 SERVICE HUB
+   the part can still be           the part can only be
+   taken back entirely             dropped, never reset
+```
+
+**Getting out of the origin zone is the real objective.** Once you are across, heavy cargo stops being
+lethal and you can take your time — which is what makes an Extreme part's −45 % speed penalty survivable
+rather than punishing.
+
+Magnetic Drive therefore buys you **the sprint**, not the whole journey. That is a much better shape for
+an upgrade than "walk home slightly faster".
+
+The player never loses Coins, magnet progression or previously secured parts.
 
 ## SECURED
 
