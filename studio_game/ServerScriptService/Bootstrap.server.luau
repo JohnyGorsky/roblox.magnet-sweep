@@ -38,6 +38,7 @@ end
 
 local Log = require(need(ReplicatedStorage, "Log")).scope("Bootstrap")
 local Remotes = require(need(ReplicatedStorage, "Remotes"))
+local MaterialKit = require(need(ReplicatedStorage, "MaterialKit"))
 local RateLimiter = require(need(script.Parent, "RateLimiter"))
 local RemoteBinder = require(need(script.Parent, "RemoteBinder"))
 local DevTools = require(need(script.Parent, "DevTools"))
@@ -118,6 +119,12 @@ local function checkConfig(): ({ string }, { string })
 	local rushBatch = Magnet.maxGrantPerTick("High")
 	if rushBatch <= Quality.TIERS.High.maxConcurrentPull then
 		table.insert(fatal, ("grant ceiling %d is below a single High-tier pull cap"):format(rushBatch))
+	end
+
+	-- a MaterialVariant that failed to save reads as a plain grey part: easy to miss now,
+	-- hard to attribute once there is a whole factory built out of them
+	for _, problem in ipairs(MaterialKit.audit()) do
+		table.insert(warnings, problem)
 	end
 
 	-- every client-facing remote must name a bucket RateLimiter actually defines

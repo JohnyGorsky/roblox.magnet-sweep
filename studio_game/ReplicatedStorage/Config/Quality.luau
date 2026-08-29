@@ -5,6 +5,13 @@
 	Mobile sets the budget (decision 0012). The glossy look ships as a TIER on top of a
 	phone floor that is never optional.
 
+	MEASURED IN STUDIO, job 004:
+	  * BasePart.Reflectance is INERT here -- 0.0 vs 0.5 vs 1.0 was indistinguishable, with and
+	    without a PBR variant, under Realistic lighting with EnvironmentSpecularScale = 1. So the
+	    Low tier drops MaterialVariant entirely rather than "falling back to Reflectance", which
+	    would have been a no-op that looked like a saving.
+	  * Part Color MULTIPLIES the ColorMap, so a neutral map takes any palette colour.
+
 	MEASURED IN STUDIO, job 002:
 	  * Lighting.Technology cannot be READ OR WRITTEN by any script (RobloxScriptSecurity).
 	  * Lighting.LightingStyle and PrioritizeLightingQuality are readable but NOT writable.
@@ -25,7 +32,7 @@ export type Tier = {
 	postColorCorrection: boolean,
 	postSunRays: boolean,
 	depthOfField: boolean,
-	usePBR: boolean, -- MaterialVariant maps vs a flat Reflectance fallback
+	usePBR: boolean, -- MaterialVariant maps vs built-in material + flat palette colour
 	meshSurfaceAppearance: boolean, -- SurfaceAppearance is MeshPart-only
 	decorativeLightRange: number, -- studs; decorative PointLights beyond this are disabled
 	particleRateScale: number,

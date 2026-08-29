@@ -145,9 +145,24 @@ by setting `part.Material = <BaseMaterial>` + `part.MaterialVariant = "<name>"`.
 The Metalness and Roughness columns are **authoring targets for the greyscale maps**, not settable
 properties (see §1).
 
+> 🔴 **`MS_Chrome` is NOT a `MaterialVariant`.** Measured in job 004: Roblox's AI material
+> generator produces *textured* surfaces, and no roughness map can make a mirror. Built-in
+> `Metal` under `LightingStyle = Realistic` read far more like chrome than any generated
+> variant. Chrome = **built-in `Metal` + a light tint**, and nothing else.
+>
+> 🔴 **`BasePart.Reflectance` is effectively inert here.** Spheres at Reflectance 0.0, 0.5
+> and 1.0 were indistinguishable — with *and* without a PBR variant, under Realistic
+> lighting with `EnvironmentSpecularScale = 1`. Do not reach for it as a gloss lever, and do
+> not use it as the Low-tier fallback (see §8).
+>
+> 🔴 **Part `Color` MULTIPLIES the ColorMap.** So a **neutral** map is worth more than a
+> correctly-coloured one: it can take any zone accent. It is also how `MS_SteelDark` is
+> dark — its generated map came out pale and is tinted at apply time rather than
+> regenerated.
+
 | Variant | Base | Metalness | Roughness | Reads as |
 |---|---|---:|---:|---|
-| `MS_Chrome` | Metal | 1.0 | 0.08 | mirror chrome — the Giant Spoon, hero pipes |
+| `MS_Chrome` | **built-in Metal, no variant** | — | — | mirror chrome — the Giant Spoon, hero pipes |
 | `MS_SteelBrushed` | Metal | 1.0 | 0.35 | machine housings, gantries |
 | `MS_SteelDark` | Metal | 1.0 | 0.55 | structure, the parts that must recede |
 | `MS_PaintedGloss` | SmoothPlastic | 0.0 | 0.15 | painted machine panels, toy-factory colour |
@@ -167,11 +182,13 @@ properties (see §1).
   MeshPart-only and overrides the surface where it applies, and Neon's textures are Studio-bundled with
   no asset ids, so no `MaterialVariant` can reproduce Neon either. (The modern emissive lever is
   `SurfaceAppearance.EmissiveMaskContent`, on meshes.)
-- **`Reflectance` is the cheap fallback**, not the goal. A `BasePart.Reflectance` of 0.2–0.4 mirrors
-  **the skybox cubemap only** — never nearby geometry — with no texture upload. Correct for the lowest
-  quality tier and for distant background metal; *not* correct for a hero prop. It is ignored on some
-  materials, and how strongly it reads depends on `EnvironmentSpecularScale`, **which defaults to 0** —
-  so a Reflectance fallback tier still has to set that.
+- **`Reflectance` is not a usable lever in this place.** In principle it mirrors the skybox cubemap
+  only (never nearby geometry). In practice, measured in job 004, sweeping it 0.0 → 1.0 produced **no
+  visible change at all**, with or without a PBR variant. `EnvironmentSpecularScale` was already 1, so
+  the usual explanation does not apply. Treat it as inert until someone re-measures it in Play.
+
+- **Apply surfaces through `MaterialKit`, never by hand.** Two of the nine are not what their name
+  suggests — Chrome has no variant, SteelDark is tinted — and call sites should not have to know.
 - **Meshy imports:** set `CollisionFidelity = PreciseConvexDecomposition` on anything a player can walk
   under or through a gap in. Box is the default and it is wrong for spoons, forks and crane hooks.
 
@@ -298,7 +315,7 @@ change.
 | | Low (phone floor) | Medium | High (PC) |
 |---|---|---|---|
 | Post-processing | Bloom only | Bloom + ColorCorrection | full chain |
-| PBR `MaterialVariant` | swapped for `Reflectance` + flat colour | on hero kit pieces | everywhere |
+| PBR `MaterialVariant` | **dropped entirely** — built-in material + flat palette colour | on hero kit pieces | everywhere |
 | `SurfaceAppearance` (meshes) | off | hero props only | all meshes |
 | Decorative `PointLight`s | disabled beyond 40 studs | 60 studs | all |
 | Particle emitters | halved `Rate` | normal | normal + trails |
@@ -306,6 +323,11 @@ change.
 
 The tier is chosen from a measured frame time, never from `UserInputService.TouchEnabled` alone — a
 tablet is not a low-end phone and a low-end laptop is not a high-end one.
+
+> **The Low tier drops `MaterialVariant` entirely** rather than swapping to `Reflectance`. Reflectance
+> was measured as inert (§3), so a Reflectance fallback would have been a no-op that *looked* like a
+> saving. Dropping the variant is a real one: no texture fetches, no PBR sampling, and the palette
+> colour still carries the read.
 
 ---
 

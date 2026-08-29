@@ -19,8 +19,16 @@ Roblox exposes no custom shader language. The glossy metal in the concept art is
 The most commonly missed one is the fourth. A windowless factory box needs bright emissive signage and
 coloured lights or the chrome dies.
 
-Neither class has scalar metalness/roughness properties — only **uploaded maps**. The numbers in the
-style skill are authoring targets for greyscale images, and those images are a costed asset task.
+Neither class has scalar metalness/roughness properties — only **uploaded maps**. Roblox's AI material
+generator produces complete sets (colour/metalness/roughness/normal) and was used for eight of the nine
+surfaces in job 004, so that asset task is done.
+
+Two measured limits came out of it:
+
+- **It cannot make mirror chrome.** A roughness map produces gloss, not a mirror. Built-in `Metal` reads
+  more like chrome than any generated variant, so `Chrome` has no variant at all.
+- **`Reflectance` is inert here** — 0.0 through 1.0 was indistinguishable in a controlled test. It is
+  not the Low-tier fallback; dropping the variant is.
 
 ## What runs continuously
 
