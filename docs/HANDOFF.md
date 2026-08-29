@@ -110,8 +110,9 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 | 1 | **Commit Job 001** | Claude never commits. You committed `cf6a90a` mid-session, which captured roughly the first third of this job; everything written after it is still uncommitted |
 | 2 | **Create the MAGNET SWEEP place** and give me its id | Cannot be done over MCP |
 | 3 | **Studio open on it** for the sync probe | MCP has no connectivity otherwise |
-| 4 | **Place settings** — access, social slots, `MaxPlayers`, and `StreamingEnabled` | Tide shipped `Fully Open` with social slots on and both became findings. `StreamingEnabled` is load-bearing here, not optional — see [systems/places](systems/places/README.md#place-settings--current-state) |
-| 5 | Later, at [the gate](roadmap/mvp.md#the-gate): **judge whether the sweep feels good** | A *feel* question. Not something Claude can sign off |
+| 4 | **Social Slots + access level** — the last two place settings | `MaxPlayers` (12), `LightingStyle` (Realistic) and `StreamingEnabled` are done. `Roblox optimized` social slots can push servers past 12, which every performance budget assumes — see [systems/places](systems/places/README.md#social-slots--the-one-still-open) |
+| 5 | **Reopen the place in Studio** before the next publish | Its session still reports `MaxPlayers = 60`; publishing from it could overwrite the 12 |
+| 6 | Later, at [the gate](roadmap/mvp.md#the-gate): **judge whether the sweep feels good** | A *feel* question. Not something Claude can sign off |
 
 ---
 

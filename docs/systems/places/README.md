@@ -6,8 +6,8 @@
 |---|---|---|---|---|
 | Everything | **MAGNET SWEEP** | `111667188608192` | `10764307230` | `studio_game/` |
 
-Published name: **🧲 MAGNET SWEEP ⚡ Build & Battle Robots 🤖**. Note the local DataModel is still named
-`Place2` — cosmetic, but worth renaming so Studio's title bar and the Explorer agree with the store page.
+Published name: **🧲 MAGNET SWEEP ⚡ Build & Battle Robots 🤖**, and the local DataModel now carries the
+same name — Explorer and store page agree.
 
 The Workshop, the Scrap Arena, all twelve zones and the Service Hubs are one place, carried by Instance
 Streaming. This is [decision 0001](../../decisions/0001-one-place-not-two.md) and it deliberately
@@ -72,25 +72,57 @@ and scripts reach them by name.
 > **Use `.local.luau` in `StarterPlayerScripts`.** The control script in the same test — a `.local.luau`
 > → `LocalScript` — fired exactly once.
 
-### Deletion is one-way
+### Deletion propagates both ways — but only if you leave the folders alone
 
-Deleting a **file** does **not** remove the instance from Studio; the instances survived and had to be
-destroyed explicitly. The reverse *is* destructive: deleting an instance in Studio deletes the source
-file ([PITFALLS #10](../../PITFALLS.md#10-studio-sync-is-two-way-and-deleting-an-instance-deletes-the-file)).
+Deleting a **file** removes its instance. Deleting an **instance** in Studio deletes the source file
+([PITFALLS #10](../../PITFALLS.md#10-studio-sync-is-two-way-and-deleting-an-instance-deletes-the-file)).
+Both directions verified.
 
-Practical consequence: **renaming a file leaves the old instance behind.** Renames need a Studio-side
-cleanup or you accumulate ghosts that still run.
+> 🔴 **The directory structure under `studio_game/` is fixed.** Exactly six folders, created once, never
+> deleted, each pinned with a `.gitkeep`. **Adding or removing directories in the sync root drops the
+> connection** — it did so twice during job 002, and it also produced a false "deletion is one-way"
+> finding, because a watcher whose folders vanish cannot report the file deletions underneath them.
+> [PITFALLS #11b](../../PITFALLS.md#11b-creating-or-deleting-directories-in-the-sync-root-drops-the-connection).
+>
+> Never create a folder for a service that does not sync. It maps to nothing and destabilises the
+> connection.
 
 ## Place settings — current state
 
-| Setting | Now | Target | Notes |
-|---|---|---|---|
-| `StreamingEnabled` | ✅ **true** | true | Already on. Load-bearing for a one-place twelve-zone corridor |
-| `Players.MaxPlayers` | ⚠️ **60** | **12** | Decided; needs changing in Studio |
-| `Players.PreferredPlayers` | 60 | 12 | Same |
-| `Lighting.LightingStyle` | ⚠️ **Soft** | **Realistic** | Realistic carries the old `Future` role and is what the glossy look needs |
-| `Lighting.PrioritizeLightingQuality` | true | true | Keep |
-| Access / social slots | not checked | decide | Tide shipped `Fully Open` with social slots on; both became findings |
+| Setting | State | Notes |
+|---|---|---|
+| `StreamingEnabled` | ✅ **true** | Load-bearing for a one-place twelve-zone corridor |
+| Maximum Visitor Count | ✅ **12** on Creator Hub | See the stale-session warning below |
+| `Lighting.LightingStyle` | ✅ **Realistic** | Carries the role `Future` used to; what the glossy look needs |
+| `Lighting.PrioritizeLightingQuality` | ✅ true | Keep |
+| Social Slots | ⚠️ **Roblox optimized** | **Still to decide** — see below |
+| Access level | ⚠️ not yet decided | Decide before the place is joinable |
+
+### ⚠️ The Studio session can be stale, and publishing from it can overwrite the web
+
+The Creator Hub says **12**. The open Studio Edit session still reports `Players.MaxPlayers = 60`.
+
+That is a **cached session**, not a failed save — the Creator Hub value is what live servers use. But it
+is a genuine hazard: **publishing from a Studio session holding the old value can push `60` back over
+the `12`.** Reopen the place in Studio before publishing, and confirm it reads 12.
+
+`Players.MaxPlayers` is **read-only from scripts** (`"Unable to assign property MaxPlayers"`), so this
+cannot be corrected or asserted from code — only observed.
+
+### Social Slots — the one still open
+
+Currently **Roblox optimized**, which lets Roblox add slots above the cap so friends can join a full
+server. That means **the effective server size can exceed 12** — the number every budget in
+[performance](../performance/README.md) is calculated against, none of which has been measured yet.
+
+**Recommendation: leave it as-is during development, and decide before the place is joinable.** It costs
+nothing while nobody is playing, and the decision wants the Arena robot count and the streaming budget
+measured first. Tide shipped `Fully Open` with social slots on without deciding either, and both became
+findings — the failure there was not the setting, it was that nobody chose it.
+
+`Lighting` already contains a `Sky`, `Atmosphere`, `SunRaysEffect`, `BloomEffect` and
+`DepthOfFieldEffect` — most of [build group 03](../../build/03-lighting-and-look.md)'s objects exist and
+need configuring rather than creating.
 
 `Lighting` already contains a `Sky`, `Atmosphere`, `SunRaysEffect`, `BloomEffect` and
 `DepthOfFieldEffect` — most of [build group 03](../../build/03-lighting-and-look.md)'s objects exist and
@@ -101,15 +133,24 @@ need configuring rather than creating.
 > reading one throws. They are Properties-pane settings, so tuning the streaming budget is a **human**
 > action, and its values cannot be asserted from a script.
 
-> ⚠️ **`Lighting.Technology` cannot even be read.** It is `RobloxScriptSecurity` on read *and* write —
-> the attempt throws *"lacking capability RobloxScript"* even from the privileged MCP context. Confirmed
-> live. Use `LightingStyle`, which is readable.
+> ⚠️ **The lighting properties are not settable from code — any code.** Measured live:
+>
+> | Property | Read | Write |
+> |---|---|---|
+> | `Lighting.Technology` | ❌ throws *"lacking capability RobloxScript"* | ❌ same |
+> | `Lighting.LightingStyle` | ✅ | ❌ *"cannot write 'LightingStyle' (lacking capability RobloxScript)"* |
+> | `Lighting.PrioritizeLightingQuality` | ✅ | ❌ same |
+>
+> So the lighting **style** is a human action in Studio, permanently. Only the *contents* of `Lighting`
+> — the `Atmosphere`, `Sky`, `BloomEffect` and friends — are scriptable, and those are where build group
+> 03's work actually lives.
 
 ## Open
 
 | Question | When |
 |---|---|
-| Rename the DataModel from `Place2` to `MAGNET SWEEP` | cosmetic, any time |
-| Access level and social slots — decide deliberately before anyone can join | before the place is joinable |
+| **Social Slots** — `Roblox optimized` can push the server past 12, which is the number every performance budget assumes | before the place is joinable, and after the Arena count is measured |
+| Access level — decide deliberately | before the place is joinable |
+| Reopen Studio so its session picks up `MaxPlayers = 12`, and never publish from a session showing 60 | before the next publish |
 | Streaming radii — what target radius suits a twelve-zone corridor? Human-set, and needs measuring | before zone 3 |
 | Does 12 players still hold once the Arena robot count is **measured**? | when the Arena is measured |

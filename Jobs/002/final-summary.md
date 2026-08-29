@@ -16,7 +16,7 @@ inherited from The Last Tide.
 | Universe | `10764307230` |
 | Creator | `johnygorsky10` |
 | Studio | `0.736.0.7361346`, Edit mode |
-| DataModel name | ⚠️ `Place2` — cosmetic, worth renaming |
+| DataModel name | `Place2` at probe time; **renamed by the user** during the job |
 
 Existing contents: a `Baseplate`, a `SpawnLocation`, and a `Lighting` service already holding a `Sky`,
 `Atmosphere`, `SunRaysEffect`, `BloomEffect` and `DepthOfFieldEffect`. All script service folders empty.
@@ -68,13 +68,25 @@ Roblox logs a warning that is easy to scroll past. A `.local.luau` control in th
 
 Play was started and stopped by this job; Studio was returned to Edit and verified.
 
-### 🔴 Deletion is one-way
+### 🔴 A false finding, and the mistake that produced it
 
-Deleting the 18 files removed **nothing** from Studio — all 13 instances survived and had to be
-destroyed explicitly. Only Studio → disk deletion propagates.
+This job originally reported *"deleting a file does not delete the instance"*. **That was wrong.**
 
-**Consequence:** renaming a file leaves the old instance behind, **and it still runs.** Every rename
-needs a Studio-side cleanup.
+The probe cleaned up with `find -type d -empty -delete`, which removed the **mapped service folders**
+along with the files. A watcher whose directories disappear cannot report the deletions underneath them
+— so the instances lingered, and the lingering was read as a property of the sync tool rather than as
+damage the cleanup had caused.
+
+Re-tested correctly (create file → confirm arrival → delete **only** the file → re-check): the instance
+**is removed**. Deletion propagates in both directions.
+
+The same mistake **dropped the user's sync twice**, and they had to reconnect it both times. The probe
+also created folders for services that cannot sync (`StarterGui/`, `Workspace/`, `Lighting/`,
+`SoundService/`, `StarterPlayer/`), which have no valid mapping.
+
+**The rule that came out of it:** the sync root's directory structure is fixed — exactly the six mapped
+folders, created once, never deleted, each pinned with a `.gitkeep`. Add files freely; never touch
+folders. See [PITFALLS #11b](../../docs/PITFALLS.md#11b-creating-or-deleting-directories-in-the-sync-root-drops-the-connection).
 
 ## Engine facts confirmed live
 
@@ -87,15 +99,24 @@ Both were flagged by job 001's engine review; this job confirmed them against th
   are Properties-pane settings. Tuning the streaming budget is a human action and cannot be asserted
   from a script.
 
-## Place settings — current vs target
+## Place settings — resolved during the job
 
-| Setting | Now | Target |
-|---|---|---|
-| `StreamingEnabled` | ✅ true | true |
-| `Players.MaxPlayers` | ⚠️ 60 | **12** |
-| `Players.PreferredPlayers` | ⚠️ 60 | **12** |
-| `Lighting.LightingStyle` | ⚠️ `Soft` | **`Realistic`** |
-| Access / social slots | unchecked | decide before joinable |
+| Setting | State |
+|---|---|
+| `StreamingEnabled` | ✅ true |
+| Maximum Visitor Count | ✅ **12**, set on Creator Hub by the user |
+| `Lighting.LightingStyle` | ✅ **Realistic**, set by the user |
+| Social Slots | ⚠️ `Roblox optimized` — **still open**, can exceed the 12 cap |
+| Access level | ⚠️ still open |
+
+Two further engine facts measured while confirming these:
+
+- **`Lighting.LightingStyle` and `PrioritizeLightingQuality` are readable but NOT writable** — the write
+  throws *"lacking capability RobloxScript"*. Combined with `Technology` being unreadable, the lighting
+  style is a permanent human-only action in Studio.
+- **`Players.MaxPlayers` is read-only from scripts** (*"Unable to assign property MaxPlayers"*).
+- ⚠️ The open Studio session still reported `MaxPlayers = 60` after the Creator Hub was set to 12 — a
+  stale session. **Publishing from it could push 60 back over the 12.** Reopen before publishing.
 
 ## Files changed
 
@@ -103,10 +124,11 @@ Both were flagged by job 001's engine review; this job confirmed them against th
   place ids recorded.
 - `docs/systems/places/README.md` — rewritten around the observed layout and the live place state.
 - `docs/PITFALLS.md` — #12 and #13 promoted from inherited guess to observed fact; **#11b added**
-  (deleting a file does not delete the instance).
+  (creating or deleting directories in the sync root drops the connection).
 - `docs/HANDOFF.md`, `.claude/skills/magnet-sweep-project/SKILL.md` — place ids and the verified layout.
 
-All 18 probe files and 13 probe instances removed; both sides verified clean.
+All probe files and instances removed; both sides verified clean. The six synced folders are pinned
+with `.gitkeep` so no future cleanup can sweep them.
 
 ## Next
 

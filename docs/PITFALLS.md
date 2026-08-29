@@ -136,13 +136,37 @@ connection looks exactly like a file that synced.
 002's probe worked precisely because it wrote to *every* candidate location at once — so "nothing
 arrived" meant *sync is down*, and could not be mistaken for *this path is not synced*.
 
-### 11b. Deleting a file does not delete the instance
+### 11b. Creating or deleting DIRECTORIES in the sync root drops the connection
 
-Sync propagates deletion **only** Studio → disk. Job 002 deleted 18 probe files; all 13 instances
-survived and had to be destroyed explicitly.
+> **The incident.** Job 002's probe created folders inside `studio_game/` for services that cannot sync
+> (`StarterGui/`, `StarterPack/`, `Workspace/`, `Lighting/`, `SoundService/`, `StarterPlayer/`), and
+> then cleaned up with `find -type d -empty -delete`, removing the **mapped service folders** as well.
+> **The user's sync dropped twice**, and they had to reconnect it both times.
+>
+> It also produced a **false finding**: because the watched directories vanished mid-operation, the
+> per-file deletions were never reported, and job 002 concluded "deleting a file does not delete the
+> instance". Re-tested properly — delete the file, leave the directory — the instance **does** disappear.
+> A broken watcher looks exactly like a one-way sync.
 
-**Consequence:** renaming a file leaves the old instance behind — **and it still runs.** Every rename
-needs a Studio-side cleanup, or you accumulate ghost scripts that execute alongside the new ones.
+**Rule:** the sync root's **top level** is fixed. Only the six mapped service folders may exist there,
+they are created once, and they are **never** deleted. Never create a top-level folder for a service
+that does not sync.
+
+**Sub-folders inside a synced service are fine** — `ReplicatedStorage/Config/` maps to a `Folder`
+instance, verified in job 003. They are ordinary content. What must never happen is deleting them, or
+adding a service folder at the top level.
+
+**Check:**
+
+```
+find studio_game -mindepth 1 -maxdepth 1 -type d    # exactly the six synced services
+find studio_game -type d ! -name .git -exec test -e {}/.gitkeep \; -o -print   # every dir pinned
+```
+
+**Every directory carries a `.gitkeep`**, so none can become empty and be swept by a cleanup command.
+
+**And:** never create a folder for a service that does not sync. It cannot map to anything, and it is
+what destabilised the connection here.
 
 ### 12. Sync layout does not transfer between games
 
