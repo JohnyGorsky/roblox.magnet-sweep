@@ -28,7 +28,7 @@ Persisted (section 68):
   it does on death — the Coins land in the profile, the scrap does not. Consistent with §69, and it
   closes the hoard-then-quit exploit (holding scrap across a session to dodge a Factory Shift that
   devalues it). It also keeps the carried slot out of every save path, which
-  [0008](0008-secured-at-the-hub-not-in-hand.md) requires.
+  [0008](../../decisions/0008-secured-at-the-hub-not-in-hand.md) requires.
 - Anything about the live Arena state. The Arena is per-server and dies with it. A deployed robot's
   **HP** is profile data and is saved when the grace period withdraws it —
   see [arena](../arena/README.md#when-the-owner-leaves).

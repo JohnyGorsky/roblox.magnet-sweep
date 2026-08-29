@@ -13,13 +13,13 @@
 **Two skills** — per-game context has to be a skill in this multi-root workspace, because only the
 workspace `CLAUDE.md` auto-loads.
 - [`magnet-sweep-project`](../../.claude/skills/magnet-sweep-project/SKILL.md) — the entry point, the
-  one-place topology, ten non-negotiables, the docs map, the gate.
+  one-place topology, eleven non-negotiables, the docs map, the gate.
 - [`magnet-sweep-style`](../../.claude/skills/magnet-sweep-style/SKILL.md) — the glossy-metal look: what
   "shader" actually means on Roblox, the palette, per-zone colour identity, the nine-variant material
   kit, the lighting recipe, the VFX vocabulary, UI tokens, quality tiers.
 
 **The design pack** — the 87-section spec redistributed into 7 game docs, 16 system docs, 5 content docs
-(including the full 96-part catalog), 13 decision records, a feature template and 2 roadmap docs.
+(including the full 96-part catalog), 15 decision records, a feature template and 2 roadmap docs.
 
 **The build manifest** — 14 groups, **572 items**; the MVP (groups 01-12) is **349** of them.
 
@@ -36,10 +36,10 @@ Checks that were capable of failing, and their results:
 
 | Check | Result |
 |---|---|
-| 96-part catalog diffed field-for-field against the spec's twelve tables | 96/96 exact — 0 fabricated, 0 dropped, 0 re-graded |
+| 96-part catalog diffed field-for-field against the spec's twelve tables | 96/96 exact — 0 fabricated, 0 dropped. Rarity is deliberately re-graded (0015) and the spec's own grade is kept in its own column, which is what the check reads |
 | 12 guardians + 12 power-curve values present | all present |
-| Relative markdown links (incl. `../../../` from both skills) | 341 checked, 0 broken |
-| Heading anchors | 28 checked, 0 broken |
+| Relative markdown links (incl. `../../../` from both skills) | 405 checked, 0 broken |
+| Heading anchors | 56 checked, 0 broken |
 | Manifest arithmetic | regenerates byte-identical; 572 = 430 + 122 + 20 |
 | All 87 spec sections mapped | 87/87, 0 unmapped |
 
@@ -118,6 +118,29 @@ untouched. Outside this repo: `roblox.workspace/tools/job.py` (project registrat
 `roblox.workspace/todo/0001`, `roblox.workspace/findings/0002`.
 
 No Luau was written. No asset was sourced. No place exists.
+
+## Follow-up in the same session: sixteen open questions answered
+
+After the review, the open-question list was put through the wizard and settled. Two answers were
+load-bearing enough to become records:
+
+- **[0014 — the owning guardian chases you.](../../docs/decisions/0014-the-owning-guardian-chases.md)**
+  A steal-an-egg rule replacing §23's flat 5-second recovery window. Guardians are inert until you
+  steal; only the owning guardian chases, and it chases across zones. Caught inside its territory the
+  part **resets**; caught outside, you ragdoll and it **drops** neutral. This came from the user, not
+  from the spec, and it is better than what the spec describes — it gives the escape a sprint-then-walk
+  shape, makes the zone boundary a real finish line, removes the ragdoll lottery, and guarantees exactly
+  one pursuer at a time in a streamed corridor.
+- **[0015 — rarity is re-graded.](../../docs/decisions/0015-rarity-is-re-graded.md)** 18 / 27 / 27 / 12 /
+  11 / 1, banded per tier, spec grade preserved in its own column and still verified.
+
+The other fourteen went into their system docs; the full table is in
+[decisions/INDEX](../../docs/decisions/INDEX.md#answered-by-the-user-2026-08-29). What remains open is
+now cleanly separated in [HANDOFF](../../docs/HANDOFF.md#-still-open) into **measurements** (which need
+Studio, not a decision), **content that does not exist yet** (per-part stats, Relic Parts), and small
+deferrable calls.
+
+`todo/0000` (rarity) and `todo/0001` (hub placement) are resolved.
 
 ## Next
 

@@ -114,23 +114,69 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 
 ---
 
-## 🚩 Open design questions
+## ✅ Sixteen questions answered, 2026-08-29
 
-Recorded so they are not answered by accident. None blocks job 002.
+Put through the wizard and settled. Two became decision records; the rest are written into their system
+docs. Full table in [decisions/INDEX](decisions/INDEX.md#answered-by-the-user-2026-08-29).
 
-| Question | Where | When it must be answered |
+The two that changed the design most:
+
+**[0014 — the owning guardian chases you.](decisions/0014-the-owning-guardian-chases.md)** The
+steal-an-egg rule replaces §23's flat 5-second recovery window. Guardians are **inert until you steal**;
+only the guardian whose part you took chases you, and it chases across zone boundaries. Caught **inside
+its territory** the part resets to its spawn; caught **outside**, you ragdoll and the part drops neutral
+for anyone to take, and the guardian goes home.
+
+This gives the escape a shape it did not have — a sprint to the boundary, then a walk — and it means
+Magnetic Drive buys you *the sprint* rather than "walk home slightly faster". It also removes the
+where-did-the-ragdoll-land lottery, and guarantees exactly one pursuer at a time, which matters in a
+streamed corridor.
+
+**[0015 — rarity is re-graded.](decisions/0015-rarity-is-re-graded.md)** The spec made `Rare` the most
+common grade in the game (35 of 96, against 13 Uncommon). Re-banded per tier, preserving each tier's own
+ordering, to **18 / 27 / 27 / 12 / 11 / 1**. The spec's grade is kept in its own column and is what the
+verifier checks, so nothing was destroyed.
+
+---
+
+## 🚩 Still open
+
+Nothing here blocks job 002.
+
+### Needs measurement, not a decision
+
+These cannot be answered by choosing. They need Studio and the Device Emulator.
+
+| Question | Where | When |
 |---|---|---|
-| **No part has any combat stats.** All 96 have a slot, rarity and an effect *phrase*; none has damage, attack speed, knockback, range, HP, armour, weight or a Magnet Power requirement | [parts-catalog](content/parts-catalog.md#what-is-still-missing-per-part) | per tier, in that tier's build group |
-| **`Rare` is the most common rarity** in the catalog — 35 of 96, against 13 Uncommon. Either the ramp means something different here, or the catalog needs re-grading | [parts-catalog](content/parts-catalog.md#rarity-distribution) | before drop rates are tuned |
-| **Mobility is thin at the top.** Tiers 9–12 offer four mobility parts, **two** of them Epic (Hover Actuators, Gravity Ring). A late player without an Epic one is on Racing Wheels | [zones](content/zones/README.md#observations-on-the-pool-as-written) | before tier 9 |
-| **Is pull force a curve or a step** at the weight threshold? A hard threshold reads as broken; a soft one makes gates fuzzy | [systems/magnet](systems/magnet/README.md#open) | before the first prototype is tuned |
-| **Can 6 Arena robots hold 30 fps** on a mid phone with parts, actuators and VFX? The spec wants 4–6 | [systems/arena](systems/arena/README.md#open) | **measure before committing to 6** |
-| **Do guardians threaten a player carrying nothing?** If not, they are scenery 90 % of the time | [systems/guardians](systems/guardians/README.md#open) | before tier 1 is tuned |
-| **Does uncollected scrap survive a disconnect**, or auto-recycle as it does on death? | [systems/save-data](systems/save-data/README.md#open) | before the first save ships |
-| **Two-handed parts** — does a Crane Hook occupy both arm sockets or one? The catalog implies one; the animation may disagree | [systems/robot-rig](systems/robot-rig/README.md#open-questions) | before tier 8 |
-| **Relic Part slots, rarities and effects** are entirely unspecified — seven names and nothing else | [content/endgame](content/endgame.md#open) | before the Endless Line |
-| **How does the zone power curve scale with Magnet Core Level?** Without an answer, run 2 is run 1 again | [content/endgame](content/endgame.md#open) | before Overclock |
-| **Service Hub placement** is *(derived)* — the spec says only "approximately every two zones" | [zones](content/zones/README.md) | before the second hub |
+| **`MaxConcurrentPull`** on a mid-range phone during a Magnet Rush | [magnet](systems/magnet/README.md#open--needs-measurement-not-a-decision) | before the Rush ships |
+| **Can 6 Arena robots hold 30 fps** with parts, actuators and VFX? The spec wants 4–6 | [arena](systems/arena/README.md#open) | **before committing to 6** |
+| Workshop + Arena + two loaded zones: memory and frame time | [performance](systems/performance/README.md#the-measurements-that-must-happen-and-when) | before the second zone |
+| Draw calls in the Workshop with full signage and PBR | [performance](systems/performance/README.md#the-measurements-that-must-happen-and-when) | before the Workshop is signed off |
+| The reference device and the memory / draw-call budgets **have not been chosen yet** | [performance](systems/performance/README.md#the-measurements-that-must-happen-and-when) | first — everything above depends on it |
+
+### Content that does not exist yet
+
+| Question | Where | When |
+|---|---|---|
+| **No part has combat stats.** All 96 have a slot, rarity and an effect *phrase*; none has damage, attack speed, knockback, range, HP, armour, weight or a Magnet Power requirement | [parts-catalog](content/parts-catalog.md#what-is-still-missing-per-part) | per tier, in that tier's build group |
+| **Relic Parts** — seven names and nothing else. Slots, rarities, effects, recovery method | [endgame](content/endgame.md#open) | its own job, before the Endless Line |
+| Guardian speeds, detection ranges and catch radii | [guardians](systems/guardians/README.md#open) | per tier |
+| Coin costs for upgrades — the *requirement* curve is given (§62), the *price* curve is not | [economy](systems/economy/README.md) | when the economy is tuned |
+| Arena reward rates — "rewards accumulate over time", no numbers | [arena](systems/arena/README.md) | when the Arena is tuned |
+
+### Smaller calls, deferrable
+
+| Question | Where | When |
+|---|---|---|
+| Is the `Damaged` layer additive or a replacement clip set? **Proposal: additive** | [robot-rig](systems/robot-rig/README.md#open-questions) | before damage visuals |
+| Guardian give-up delay after a drop | [guardians](systems/guardians/README.md#open) | before the first guardian |
+| Two thieves, one zone, one guardian — what happens? | [guardians](systems/guardians/README.md#open) | before zone 2 |
+| Is the ~2 min Arena grace period the right length? | [arena](systems/arena/README.md#open) | when the Arena is tuned |
+| Does a paint carry with its part when swapped out and back? | [cosmetics](content/cosmetics.md#open) | before the first paint |
+| Does the Endless Line share the Arena, or is the robot left behind? | [endgame](content/endgame.md#open) | before it ships |
+| Event frequency on a quiet server; MAGNETIC STORM's cost; purchased-event cooldown | [events](content/events.md#open) | before events ship |
+| Spectator camera, or watch from the Workshop floor? | [arena](systems/arena/README.md#open) | before launch |
 
 ---
 

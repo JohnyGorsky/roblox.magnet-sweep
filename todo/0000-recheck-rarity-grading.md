@@ -1,6 +1,6 @@
 # TODO 0000 — Re-check the rarity grading of the part catalog
 
-**Status:** open
+**Status:** resolved
 **Opened:** 2026-08-29 (job 001)
 
 The 96-part catalog transcribed from the spec grades **35 parts as `Rare`** and only **13 as
@@ -20,3 +20,9 @@ before drop weights are set.
 | Mythic | 1 |
 
 Numbers are computed in [parts-catalog.md](../docs/content/parts-catalog.md#rarity-distribution).
+
+---
+
+**RESOLVED 2026-08-29.** Re-graded per tier to 18 / 27 / 27 / 12 / 11 / 1, preserving each
+tier's own ordering and keeping the spec's grade in its own column. See
+[decision 0015](../docs/decisions/0015-rarity-is-re-graded.md).

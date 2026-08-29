@@ -44,7 +44,7 @@ homemade robot, and release that robot into a persistent Arena. Mobile-first. **
 
 ## Content
 
-- [The twelve zones](content/zones/README.md) — themes, guardians, gates, part pools
+- [The twelve zones](content/zones/README.md) — themes, guardians, gates, part pools, six Service Hubs
 - [Robot parts — full catalog](content/parts-catalog.md) — **96 parts**, slots, rarities, effects
 - [Dynamic events](content/events.md) — the eight, and why Shifts are not events
 - [Cosmetics](content/cosmetics.md) — the revenue backbone
@@ -52,7 +52,12 @@ homemade robot, and release that robot into a persistent Arena. Mobile-first. **
 
 ## Accepted decisions
 
-**[decisions/INDEX.md](decisions/INDEX.md)** — 13 records. Never silently overturn one.
+**[decisions/INDEX.md](decisions/INDEX.md)** — 15 records. Never silently overturn one.
+
+Sixteen open questions were answered on 2026-08-29; two became records
+([0014](decisions/0014-the-owning-guardian-chases.md) the steal-an-egg extraction rule,
+[0015](decisions/0015-rarity-is-re-graded.md) the rarity re-grade) and the rest went into their system
+docs.
 
 The three most easily broken by accident — each is violated by writing the *convenient* code, not by
 making a decision: [0004](decisions/0004-parts-are-content-rig-is-the-engine.md) (parts are content),
