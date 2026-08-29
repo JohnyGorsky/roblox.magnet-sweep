@@ -1,6 +1,12 @@
 {
-  "_comment": "MAGNET SWEEP has ONE place (decision 0001). studio_game/ is the single sync root; studio_lobby/ is an empty stub kept only so a future lobby split stays cheap - nothing syncs from it and it must not be listed here until it holds a real place. *** EVERY PATH BELOW IS UNVERIFIED. *** Nothing is synced yet and no MCP probe has been run. The layout is GUESSED from The Last Tide, whose layout is FLAT (service folders directly at the sync root; StarterPlayer's children sit at the root as StarterPlayerScripts/ and StarterCharacterScripts/, NOT nested under StarterPlayer/). Jungle uses the NESTED Rojo convention instead. The two disagree, which is exactly why this must be MEASURED rather than assumed - Tide job 003 was burned by assuming, and ELEVATOR 13 inherited the same unverified guess. Job 002 probes the place over MCP and rewrites this file with what was OBSERVED. Until then, do not cite these paths as fact. File suffixes are likewise unproven here; on Tide, .luau = ModuleScript, .server.luau = Script/Server, .local.luau = LocalScript, and .client.luau in StarterPlayerScripts RUNS TWICE (a trap), while .module.luau is not a recognised suffix at all.",
-  "_status": "UNVERIFIED - guessed from roblox.tide, not probed. Job 002 owns proving it.",
+  "_comment": "MAGNET SWEEP has ONE place (decision 0001): 'MAGNET SWEEP' placeId 111667188608192, universe 10764307230. studio_game/ is the single sync root; studio_lobby/ is an empty stub kept only so a future lobby split stays cheap - nothing syncs from it and it must not be listed here until it holds a real place. *** EVERY PATH BELOW WAS OBSERVED, NOT ASSUMED *** - probed over MCP in job 002 on 2026-08-29 by writing a marker file into EVERY candidate location at once (so 'nothing appeared' could be told apart from 'this path does not sync') and reading the DataModel back. LAYOUT IS FLAT: service folders sit directly at the sync root, and StarterPlayer's children are StarterPlayerScripts/ and StarterCharacterScripts/ AT THE ROOT - the nested form studio_game/StarterPlayer/StarterPlayerScripts/ synced NOTHING. This matches The Last Tide and contradicts Jungle's nested Rojo convention. File suffix sets the class, also observed: .luau = ModuleScript; .server.luau = Script RunContext=Server; .client.luau = Script RunContext=Client; .local.luau = LocalScript RunContext=Legacy; .module.luau is NOT a recognised suffix - it yields a ModuleScript whose NAME ends in '.module'. TRAP, reproduced in Play: a .client.luau in StarterPlayerScripts RUNS TWICE (once in place, once from the copy in Players.<name>.PlayerScripts) and Roblox logs a warning about it - use .local.luau there. Deleting a file does NOT remove the instance from Studio; sync propagates deletions only in the Studio -> disk direction.",
+  "_status": "VERIFIED 2026-08-29 (job 002) - observed over MCP, not guessed.",
+  "_place": {
+    "name": "MAGNET SWEEP",
+    "placeId": 111667188608192,
+    "universeId": 10764307230,
+    "syncRoot": "studio_game/"
+  },
   "synced_paths": [
     "studio_game/ReplicatedFirst/",
     "studio_game/ReplicatedStorage/",
@@ -12,6 +18,16 @@
   "non_synced_paths": [
     "studio_game/StarterGui/",
     "studio_game/StarterPack/",
-    "studio_game/Workspace/"
-  ]
+    "studio_game/Workspace/",
+    "studio_game/Lighting/",
+    "studio_game/SoundService/",
+    "studio_game/StarterPlayer/"
+  ],
+  "_suffixes": {
+    ".luau": "ModuleScript",
+    ".server.luau": "Script (RunContext=Server)",
+    ".client.luau": "Script (RunContext=Client) - NEVER in StarterPlayerScripts, it runs twice",
+    ".local.luau": "LocalScript (RunContext=Legacy) - use this in StarterPlayerScripts",
+    ".module.luau": "NOT a suffix - produces a ModuleScript named '<x>.module'"
+  }
 }

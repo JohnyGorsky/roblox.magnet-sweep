@@ -59,9 +59,9 @@ Source of record: `assets/MAGNET SWEEP.md` (the 87-section intake) plus `assets/
 
 ## One place
 
-| Role | Place | Id | Sync root |
-|---|---|---|---|
-| Everything | MAGNET SWEEP | *not created yet* | `studio_game/` |
+| Role | Place | Id | Universe | Sync root |
+|---|---|---|---|---|
+| Everything | MAGNET SWEEP | `111667188608192` | `10764307230` | `studio_game/` |
 
 The Workshop hub, the Scrap Arena, all 12 factory zones and the Service Hubs live in **one place**,
 carried by Instance Streaming. This is [decision 0001](../../../docs/decisions/0001-one-place-not-two.md),
@@ -71,8 +71,21 @@ notifying you mid-factory. A place boundary turns both into cross-server messagi
 
 `studio_lobby/` exists as an **empty stub** and syncs nothing.
 
-⚠️ **The sync layout is UNVERIFIED.** `.jobconfig.json` guesses it from The Last Tide. Tide is flat,
-Jungle is nested, and the two disagree — job 002 probes it. Do not cite those paths as fact yet.
+✅ **The sync layout is VERIFIED** (job 002, probed over MCP). It is **FLAT** — service folders at the
+sync root, and `StarterPlayerScripts/` / `StarterCharacterScripts/` **at the root**, not nested under
+`StarterPlayer/`. The nested form syncs nothing.
+
+**Does not sync:** `StarterGui`, `StarterPack`, `Workspace`, `Lighting`, `SoundService`. Anything there
+is hand-placed in Studio; scripts find it by name.
+
+**Suffixes:** `.luau` = `ModuleScript` · `.server.luau` = `Script`/Server · `.client.luau` =
+`Script`/Client · `.local.luau` = `LocalScript` · `.module.luau` is **not** a suffix (you get a
+`ModuleScript` named `<x>.module`).
+
+🔴 **`.client.luau` in `StarterPlayerScripts` RUNS TWICE** — reproduced in Play. Use `.local.luau` there.
+
+🔴 **Deleting a file does not delete the instance**; only Studio → disk deletion propagates. A rename
+leaves a ghost behind that still runs.
 
 ## Non-negotiables
 

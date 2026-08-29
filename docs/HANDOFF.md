@@ -12,8 +12,8 @@ here reads as progress it is not.
 |---|---|
 | **Design** | ✅ Complete. The 87-section spec is redistributed into `docs/` with a coverage table |
 | **Task list** | ✅ Complete. 14 groups, **581 items**, sequenced into **28 jobs** to the MVP gate |
-| **Place** | ❌ **Not created.** One place is needed ([decision 0001](decisions/0001-one-place-not-two.md)) |
-| **Sync** | ❌ Not connected. `.jobconfig.json` paths are **guessed and marked UNVERIFIED** |
+| **Place** | ✅ Created. `111667188608192`, universe `10764307230`, `StreamingEnabled` already on |
+| **Sync** | ✅ Connected and **VERIFIED** — flat layout, 6 synced service folders, suffixes and the double-run trap all observed (job 002) |
 | **Code** | ❌ None |
 | **Assets** | ❌ None sourced, and none should be until a slot needs one. Concept art and the spec are in `assets/` |
 
@@ -110,7 +110,7 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 | 1 | **Commit Job 001** | Claude never commits. You committed `cf6a90a` mid-session, which captured roughly the first third of this job; everything written after it is still uncommitted |
 | 2 | **Create the MAGNET SWEEP place** and give me its id | Cannot be done over MCP |
 | 3 | **Studio open on it** for the sync probe | MCP has no connectivity otherwise |
-| 4 | **Place settings** — access, social slots, `MaxPlayers`, and `StreamingEnabled` | Tide shipped `Fully Open` with social slots on and both became findings. `StreamingEnabled` is load-bearing here, not optional — see [systems/places](systems/places/README.md#place-settings-to-decide-before-anyone-can-join) |
+| 4 | **Place settings** — access, social slots, `MaxPlayers`, and `StreamingEnabled` | Tide shipped `Fully Open` with social slots on and both became findings. `StreamingEnabled` is load-bearing here, not optional — see [systems/places](systems/places/README.md#place-settings--current-state) |
 | 5 | Later, at [the gate](roadmap/mvp.md#the-gate): **judge whether the sweep feels good** | A *feel* question. Not something Claude can sign off |
 
 ---

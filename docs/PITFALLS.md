@@ -132,6 +132,18 @@ The user's words are the specification.
 **Check:** confirm sync is live before trusting that an edit landed. A file saved into a dropped
 connection looks exactly like a file that synced.
 
+**How to check cheaply:** write a marker file to a path known to sync and read the DataModel back. Job
+002's probe worked precisely because it wrote to *every* candidate location at once — so "nothing
+arrived" meant *sync is down*, and could not be mistaken for *this path is not synced*.
+
+### 11b. Deleting a file does not delete the instance
+
+Sync propagates deletion **only** Studio → disk. Job 002 deleted 18 probe files; all 13 instances
+survived and had to be destroyed explicitly.
+
+**Consequence:** renaming a file leaves the old instance behind — **and it still runs.** Every rename
+needs a Studio-side cleanup, or you accumulate ghost scripts that execute alongside the new ones.
+
 ### 12. Sync layout does not transfer between games
 
 > **The incident.** Tide job 003 assumed Jungle's nested Rojo layout. Tide is **flat**. ELEVATOR 13 then
@@ -139,14 +151,20 @@ connection looks exactly like a file that synced.
 
 **Rule:** probe the layout over MCP, per place, and write down what was **observed**.
 
-**Here:** `.jobconfig.json` is marked `UNVERIFIED` and job 002 owns proving it. **Do not cite those paths
-as fact.**
+**Here:** ✅ settled. Job 002 probed it and MAGNET SWEEP is **flat**, like Tide and unlike Jungle.
+`.jobconfig.json` now says `VERIFIED` and records the method.
 
-### 13. File suffixes are traps
+### 13. File suffixes are traps — two of them, both confirmed here
 
-On Tide: `.luau` = `ModuleScript`, `.server.luau` = `Script`/Server, `.local.luau` = `LocalScript`,
-`.module.luau` is **not recognised at all** — and **`.client.luau` in `StarterPlayerScripts` runs
-twice**. None of this is proven here. Job 002 proves it.
+Observed in job 002, not inherited:
+
+- **`.module.luau` is not a suffix.** You get a `ModuleScript` whose *name* ends in `.module`. It looks
+  like it worked.
+- 🔴 **`.client.luau` in `StarterPlayerScripts` RUNS TWICE** — once in place, once as the per-player copy
+  in `Players.<name>.PlayerScripts`. Roblox logs a warning about it that is easy to scroll past.
+  **Use `.local.luau` there.** A `.local.luau` control in the same test fired exactly once.
+
+**Check:** grep for `.client.luau` under `StarterPlayerScripts/`. There should never be one.
 
 ### 14. Studio Sync does not reach a running Play session
 

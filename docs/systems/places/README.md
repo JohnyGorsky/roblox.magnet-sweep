@@ -2,9 +2,12 @@
 
 ## One place
 
-| Role | Place | Id | Sync root |
-|---|---|---|---|
-| Everything | MAGNET SWEEP | **not created yet** | `studio_game/` |
+| Role | Place | Id | Universe | Sync root |
+|---|---|---|---|---|
+| Everything | **MAGNET SWEEP** | `111667188608192` | `10764307230` | `studio_game/` |
+
+Published name: **🧲 MAGNET SWEEP ⚡ Build & Battle Robots 🤖**. Note the local DataModel is still named
+`Place2` — cosmetic, but worth renaming so Studio's title bar and the Explorer agree with the store page.
 
 The Workshop, the Scrap Arena, all twelve zones and the Service Hubs are one place, carried by Instance
 Streaming. This is [decision 0001](../../decisions/0001-one-place-not-two.md) and it deliberately
@@ -13,55 +16,100 @@ diverges from The Last Tide and ELEVATOR 13, which are both two-place games.
 `studio_lobby/` is an **empty stub**. It syncs nothing and is listed in no config. It exists only so a
 future split stays cheap.
 
-## ⚠️ The sync layout is UNVERIFIED
+## ✅ The sync layout is VERIFIED
 
-`.jobconfig.json` currently **guesses** the layout from The Last Tide. Do not cite those paths as fact.
+Probed over MCP in [job 002](../../../Jobs/002/final-summary.md) on 2026-08-29. **Every path was
+observed, not assumed** — Tide job 003 was burned by assuming, and ELEVATOR 13 inherited the same
+unverified guess rather than resolving it.
 
-| Game | Layout |
-|---|---|
-| The Last Tide | **flat** — service folders at the sync root; `StarterPlayerScripts/` and `StarterCharacterScripts/` at the root, *not* nested under `StarterPlayer/` |
-| Jungle | **nested** — the Rojo convention, `sync/StarterPlayer/StarterPlayerScripts/` |
+**Method that could fail:** a marker file was written into *every* candidate location simultaneously, so
+"nothing appeared" could be distinguished from "this particular path does not sync". Eleven of eighteen
+markers arrived; seven did not. A silent no-op would have shown as zero arrivals.
 
-The two disagree. Tide job 003 was burned by assuming, and ELEVATOR 13 inherited the same unverified
-guess rather than resolving it. **Job 002 probes it over MCP and rewrites the file with what was
-observed.**
+### Layout: FLAT
 
-What the probe must settle:
+Service folders sit **directly at the sync root**. `StarterPlayer`'s children sit at the root too:
 
-1. Flat vs nested.
-2. Which service folders actually sync. On Tide, `StarterGui`, `StarterPack` and `Workspace` do **not**.
-3. Which file suffix produces which class. On Tide: `.luau` = `ModuleScript`, `.server.luau` =
-   `Script`/Server, `.local.luau` = `LocalScript`, `.module.luau` is **not** recognised — and
-   `.client.luau` in `StarterPlayerScripts` **runs twice**, which is a trap.
+```
+studio_game/
+├── ReplicatedFirst/            ✅ syncs
+├── ReplicatedStorage/          ✅ syncs
+├── ServerScriptService/        ✅ syncs
+├── ServerStorage/              ✅ syncs
+├── StarterPlayerScripts/       ✅ syncs → StarterPlayer.StarterPlayerScripts
+└── StarterCharacterScripts/    ✅ syncs → StarterPlayer.StarterCharacterScripts
+```
 
-## Studio Sync is two-way and destructive
+**The nested Rojo form syncs nothing.** `studio_game/StarterPlayer/StarterPlayerScripts/` produced no
+instance at all. This matches The Last Tide and **contradicts Jungle**, which uses the nested convention
+— the two genuinely disagree, which is why it had to be measured.
 
-> 🔴 **Deleting an instance in Studio deletes the source FILE.** Treat a Studio-side delete as `rm`.
-> Scope any cleanup to `Workspace` only, and never tidy the synced service folders from the Explorer.
+### Does not sync
 
-> ⚠️ **Reopening a place can silently drop the sync connection.** Confirm sync is live before trusting
-> that an edit landed.
+`StarterGui/` · `StarterPack/` · `Workspace/` · `Lighting/` · `SoundService/` · `StarterPlayer/`
 
-> ⚠️ **Studio Sync does not reach a running Play session.** Stop Play before expecting a file change to
-> take effect — and always stop a Play session you started; leaving one running blocks both sync and the
-> Edit datamodel.
+Anything in those services is **hand-placed in Studio**, not authored on disk. That is a real constraint
+on how the Workshop, the zones and the HUD get built: geometry and `ScreenGui` trees are editor work,
+and scripts reach them by name.
 
-## Place settings to decide before anyone can join
+### File suffixes
 
-Tide shipped `Fully Open` access with social slots enabled and both became findings. Decide these
-deliberately:
+| Suffix | Class | RunContext |
+|---|---|---|
+| `.luau` | `ModuleScript` | — |
+| `.server.luau` | `Script` | `Server` |
+| `.client.luau` | `Script` | `Client` |
+| `.local.luau` | `LocalScript` | `Legacy` |
+| `.module.luau` | ⚠️ **not a suffix** — yields a `ModuleScript` named `<x>.module` | — |
 
-- Access: who can join, and from where.
-- Social slots: on or off.
-- **`MaxPlayers` = 12.** Decided. With 4-6 Arena slots, a third to a half of the server can have a
-  robot deployed at once — contested enough to matter, rarely a long queue. Twelve also keeps the
-  streaming and physics budget survivable in one place holding a hub, an arena and a twelve-zone
-  corridor.
-- `StreamingEnabled` and its radius/behaviour. **This one is not optional here.**
+> 🔴 **`.client.luau` in `StarterPlayerScripts` RUNS TWICE.** Reproduced in a Play session: once in
+> place as `StarterPlayer.StarterPlayerScripts.<name>`, and again as the per-player copy
+> `Players.<name>.PlayerScripts.<name>`. Roblox logs a warning:
+>
+> > *"The script … with a non-legacy RunContext is parented to a container 'StarterPlayerScripts', which
+> > will cause it to run multiple times."*
+>
+> **Use `.local.luau` in `StarterPlayerScripts`.** The control script in the same test — a `.local.luau`
+> → `LocalScript` — fired exactly once.
+
+### Deletion is one-way
+
+Deleting a **file** does **not** remove the instance from Studio; the instances survived and had to be
+destroyed explicitly. The reverse *is* destructive: deleting an instance in Studio deletes the source
+file ([PITFALLS #10](../../PITFALLS.md#10-studio-sync-is-two-way-and-deleting-an-instance-deletes-the-file)).
+
+Practical consequence: **renaming a file leaves the old instance behind.** Renames need a Studio-side
+cleanup or you accumulate ghosts that still run.
+
+## Place settings — current state
+
+| Setting | Now | Target | Notes |
+|---|---|---|---|
+| `StreamingEnabled` | ✅ **true** | true | Already on. Load-bearing for a one-place twelve-zone corridor |
+| `Players.MaxPlayers` | ⚠️ **60** | **12** | Decided; needs changing in Studio |
+| `Players.PreferredPlayers` | 60 | 12 | Same |
+| `Lighting.LightingStyle` | ⚠️ **Soft** | **Realistic** | Realistic carries the old `Future` role and is what the glossy look needs |
+| `Lighting.PrioritizeLightingQuality` | true | true | Keep |
+| Access / social slots | not checked | decide | Tide shipped `Fully Open` with social slots on; both became findings |
+
+`Lighting` already contains a `Sky`, `Atmosphere`, `SunRaysEffect`, `BloomEffect` and
+`DepthOfFieldEffect` — most of [build group 03](../../build/03-lighting-and-look.md)'s objects exist and
+need configuring rather than creating.
+
+> ⚠️ **The streaming radii are not scriptable.** `StreamingTargetRadius`, `StreamingMinRadius`,
+> `StreamingIntegrityMode` and `ModelStreamingBehavior` are *not valid members of Workspace* from Luau —
+> reading one throws. They are Properties-pane settings, so tuning the streaming budget is a **human**
+> action, and its values cannot be asserted from a script.
+
+> ⚠️ **`Lighting.Technology` cannot even be read.** It is `RobloxScriptSecurity` on read *and* write —
+> the attempt throws *"lacking capability RobloxScript"* even from the privileged MCP context. Confirmed
+> live. Use `LightingStyle`, which is readable.
 
 ## Open
 
 | Question | When |
 |---|---|
-| The place does not exist yet — it needs creating and its id recording | before job 002 |
-| Does 12 still hold once the Arena robot count is **measured**? If 6 robots will not render, the Arena slots shrink and 12 may be too many players per slot | when the Arena is measured |
+| Rename the DataModel from `Place2` to `MAGNET SWEEP` | cosmetic, any time |
+| Access level and social slots — decide deliberately before anyone can join | before the place is joinable |
+| Streaming radii — what target radius suits a twelve-zone corridor? Human-set, and needs measuring | before zone 3 |
+| Does 12 players still hold once the Arena robot count is **measured**? | when the Arena is measured |
