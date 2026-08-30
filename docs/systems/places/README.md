@@ -120,13 +120,17 @@ nothing while nobody is playing, and the decision wants the Arena robot count an
 measured first. Tide shipped `Fully Open` with social slots on without deciding either, and both became
 findings — the failure there was not the setting, it was that nobody chose it.
 
-`Lighting` already contains a `Sky`, `Atmosphere`, `SunRaysEffect`, `BloomEffect` and
-`DepthOfFieldEffect` — most of [build group 03](../../build/03-lighting-and-look.md)'s objects exist and
-need configuring rather than creating.
+`Lighting` contains a `Sky`, `Atmosphere`, `SunRaysEffect`, `BloomEffect`, `DepthOfFieldEffect`
+**and a `ColorCorrectionEffect`** — verified in a Play session, 2026-08-30. Most of
+[build group 03](../../build/03-lighting-and-look.md)'s objects exist and need configuring
+rather than creating.
 
-`Lighting` already contains a `Sky`, `Atmosphere`, `SunRaysEffect`, `BloomEffect` and
-`DepthOfFieldEffect` — most of [build group 03](../../build/03-lighting-and-look.md)'s objects exist and
-need configuring rather than creating.
+> ⚠️ This list was wrong once, and the error cost real work. It omitted `ColorCorrectionEffect`,
+> and a reviewer reading it concluded that colour grading was missing from the game — which
+> matters because `postColorCorrection` is the **only** post-processing field that differs
+> between the Low and Medium tiers. The effect was there all along. An inventory of what lives
+> inside the `.rbxl` is unfalsifiable from the repository, so date it and say how it was checked,
+> or do not write it down.
 
 > ⚠️ **The streaming radii are not scriptable.** `StreamingTargetRadius`, `StreamingMinRadius`,
 > `StreamingIntegrityMode` and `ModelStreamingBehavior` are *not valid members of Workspace* from Luau —

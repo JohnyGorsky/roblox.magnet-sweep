@@ -20,6 +20,8 @@ new record that says so and link it from here.
 | [0013](0013-overclock-not-rebirth.md) | Overclock, not rebirth | The robot survives the reset |
 | [0014](0014-the-owning-guardian-chases.md) | The owning guardian chases you | Its territory is the finish line; outside it, the part can only be dropped |
 | [0015](0015-rarity-is-re-graded.md) | Rarity is re-graded | The spec made `Rare` the most common grade in the game |
+| [0016](0016-low-tier-drops-the-variant.md) | The Low tier drops the MaterialVariant | Reflectance is inert on `Metal`, so it is not a fallback. Amends 0012 |
+| [0017](0017-the-kit-is-generated-from-a-spec.md) | The kit is generated from a spec, on a 4-stud grid | `Workspace` does not sync, so a hand-built kit could never be in git |
 
 ## Answered by the user, 2026-08-29
 

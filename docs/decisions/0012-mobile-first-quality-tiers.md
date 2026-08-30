@@ -12,6 +12,11 @@ frame budget on pulled-object physics.
 Defender burned four rounds of rework by deferring phone questions that Studio's Device Emulator would
 have answered immediately.
 
+> ⚠️ **Amended by [decision 0016](0016-low-tier-drops-the-variant.md) (2026-08-29).** This record
+> originally said the Low tier swaps PBR for a `Reflectance` fallback. Measurement showed Reflectance is
+> **inert on `Metal`**, the base material of five of the nine kit surfaces, so the Low tier **drops the
+> `MaterialVariant` entirely** instead. Everything else here stands.
+
 ## Decision
 
 - **Design to a mid-range phone.** That is the floor, and the floor is never optional.
@@ -21,7 +26,7 @@ have answered immediately.
   script-writable** — `Lighting.Technology` is `RobloxScriptSecurity` on read *and* write. Roblox already
   degrades lighting on low-end clients. Everything else the tier controls is client-side and switchable
   by a `LocalScript`: post-processing effects, decorative light range, particle rates,
-  `MaterialVariant` PBR versus a `Reflectance` fallback, and `MaxConcurrentPull`.
+  `MaterialVariant` PBR on or off (see the amendment above), and `MaxConcurrentPull`.
 - The tier is chosen from a **measured frame time**, never from `TouchEnabled` alone. A tablet is not a
   low-end phone; a cheap laptop is not a high-end PC.
 - **Mobile questions are measured in the Device Emulator**, which gives real `TouchEnabled`, real

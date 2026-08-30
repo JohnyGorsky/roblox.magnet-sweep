@@ -25,10 +25,12 @@ surfaces in job 004, so that asset task is done.
 
 Two measured limits came out of it:
 
-- **It cannot make mirror chrome.** A roughness map produces gloss, not a mirror. Built-in `Metal` reads
-  more like chrome than any generated variant, so `Chrome` has no variant at all.
-- **`Reflectance` is inert here** — 0.0 through 1.0 was indistinguishable in a controlled test. It is
-  not the Low-tier fallback; dropping the variant is.
+- **Its output is textured, so it cannot make mirror chrome.** Built-in `Metal` shows tight specular
+  points where the generated variants show a broad wash, so `Chrome` has no variant at all. Note the
+  reason is the generator's textured Color/Normal maps — *not* that roughness maps cannot mirror, which
+  is false. Hand-authored flat greyscale maps remain untried.
+- **`Reflectance` is material-dependent** — inert on `Metal`, active on `SmoothPlastic`. It is not the
+  Low-tier fallback; dropping the variant is ([decision 0016](../../decisions/0016-low-tier-drops-the-variant.md)).
 
 ## What runs continuously
 
@@ -58,7 +60,7 @@ created and destroyed at runtime.
 The lighting style is place-wide and is **not script-writable at all** (`Lighting.Technology` is
 `RobloxScriptSecurity` on read *and* write; its successors are readable but not writable) — Roblox
 already degrades lighting on low-end clients. What the tier controls is client-side: the post chain,
-PBR versus `Reflectance` fallback, decorative light range, particle rates, and `MaxConcurrentPull`.
+PBR on or off (the Low tier drops `MaterialVariant` entirely), decorative light range, particle rates, and `MaxConcurrentPull`.
 Table in the style skill, §8.
 
 ## Verification

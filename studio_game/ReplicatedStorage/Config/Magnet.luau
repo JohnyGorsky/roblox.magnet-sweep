@@ -69,6 +69,16 @@ function Magnet.pullSpeedMultiplier(weight: number, power: number): number
 	return 1 - t * (1 - Magnet.PULL.STRAIN_MIN_SPEED)
 end
 
+--- Studs/sec an object of `weight` travels toward a magnet of `power`. 0 means REFUSED.
+---
+--- ⚠️ The client drives at this speed and the server's travel gate judges against it, so
+--- they must be the same expression, not two copies that agree today. They did not: the
+--- client applied its own `math.max(mult, 0.15)` floor found nowhere else, which is a false
+--- rejection waiting for the day the curve is retuned.
+function Magnet.pullSpeed(weight: number, power: number): number
+	return Magnet.PULL.BASE_SPEED * Magnet.pullSpeedMultiplier(weight, power)
+end
+
 --------------------------------------------------------------------------------
 -- Radius: upgrading grows BOTH ranges, with REACT wider than PULL.
 --
@@ -103,6 +113,16 @@ Magnet.RUSH = {
 	PULL_CAP_MULTIPLIER = 1.5, -- raises MaxConcurrentPull, modestly (decision 0005)
 }
 
+--- The paid PvE magnet boost (spec 71) and the magnet's maximum visual state.
+---
+--- ⚠️ Decision 0011: Robux never buys Arena power. This must never reach a deployed robot,
+--- which is why it lives on the player's magnet state and is read only by the magnet's radius
+--- and its VFX -- see `MagnetState.grantOvercharge`.
+Magnet.OVERCHARGE = {
+	DURATION = 30.0, -- [UNTUNED] seconds per purchase
+	RADIUS_MULTIPLIER = 2.0,
+}
+
 --------------------------------------------------------------------------------
 -- The physics budget. Decision 0005: only PULL costs physics, and it is CAPPED.
 --
@@ -124,7 +144,43 @@ Magnet.POOL = {
 	INITIAL_SIZE = 400, -- pre-allocated scrap instances per zone
 	GROW_BY = 50, -- if the pool is exhausted, allocate this many more
 	MAX_SIZE = 1200, -- hard ceiling; beyond this, spawns are skipped
+	--- ⚠️ Must stay well ABOVE `workspace.FallenPartsDestroyHeight` (default -500). Parking
+	--- the pool exactly on the destroy plane means any part that is unanchored for one frame
+	--- while parked is DELETED by the engine -- and a pool whose parts get destroyed is not
+	--- a pool. An earlier version used -500 exactly.
+	PARK_Y = -300,
 }
+
+--- How long an object may stay in PULL before the server takes it back. A pull is client-
+--- driven; if the client stops driving it (death, alt-tab, streaming, walking away) the
+--- object would otherwise stay unanchored FOREVER, holding a cap slot. Nothing else in the
+--- state machine has an exit.
+---
+--- The slowest honest pull is the full radius at the worst weight multiplier -- roughly 1.5s
+--- -- so this is generous at 2x that, and it is deliberately NOT the main safety net.
+Magnet.PULL_TIMEOUT = 3.0
+
+--- Studs below the hand at which the magnet's business end sits. The client welds the tip
+--- here and objects arrive here, so this is also the first term of the server's grant range.
+---
+--- ⚠️ Shared on purpose. The server judges a claim against the player's ROOT, because the
+--- rig is built client-side and the server never sees it -- so if the client moves the tip
+--- and the server does not know, honest collections start being rejected as out of range.
+Magnet.TIP_OFFSET = 2.6
+
+--- How far below its spawn point an in-flight object may sink before the server takes it
+--- back, in studs.
+---
+--- ⚠️ THIS, not the timeout, is what actually saves an abandoned object -- because a
+--- timeout is a race against gravity and it loses. Scrap is CanCollide = false by design (it
+--- must never block the player), so an abandoned unanchored piece does not land on the
+--- floor: it falls THROUGH it. Measured at gravity 196 from a spawn height of 0.35, it
+--- reaches FallenPartsDestroyHeight and is DELETED BY THE ENGINE in 2.26s -- comfortably
+--- inside even a 3s timeout. A 10Hz reaper catches a fall of 0.98 studs per tick, so a
+--- height bound triggers in ~0.5s and always beats the drop.
+---
+--- Loose enough that a legitimate pull off a ledge is not confiscated mid-flight.
+Magnet.PULL_FALL_LIMIT = 25
 
 --------------------------------------------------------------------------------
 -- Rare cargo weight classes and their speed penalties (§12).
@@ -161,8 +217,35 @@ Magnet.GRANT = {
 	TICK = 0.25, -- seconds; collections are batched, never one remote per object
 	SAFETY_FACTOR = 1.5, -- headroom over the theoretical maximum
 	MIN_TRANSIT = 0.25, -- seconds; floor on assumed travel time, so the maths can't divide by ~0
-	MAX_RANGE_SLACK = 1.35, -- claimed collections beyond radius * this are rejected
+	--- How far the player may move between the client hiding an object and the server judging
+	--- the claim, in studs: one flush TICK at run speed. This is the ONLY tuned term in the
+	--- grant range -- see Magnet.grantRange, where the rest is measured off the rig.
+	LAG_ALLOWANCE = 4,
+	--- Fraction of the theoretical transit time an object must actually have spent in PULL.
+	--- Below 1.0 to tolerate frame-rate variance on a client that is driving honestly; well
+	--- above 0 so a claim cannot outrun the physics it is supposed to be reporting.
+	MIN_TRAVEL_FRACTION = 0.7,
 }
+
+--- How far from the player's ROOT a claimed object may be. DERIVED, not tuned: an object
+--- that has honestly arrived is at the tip, which is TIP_OFFSET below the hand, and it counts
+--- as arrived from ARRIVE_RADIUS away, and the player may have run LAG_ALLOWANCE studs since.
+---
+--- ⚠️ It was once `pullRadius * 1.35` = 16.2 studs against an arrival of 2.5, which made
+--- ENTERING the field the collection and left 13.7 studs of every pull optional. Anything
+--- that scales this off the pull radius reintroduces exactly that.
+function Magnet.grantRange(): number
+	return Magnet.TIP_OFFSET + Magnet.PULL.ARRIVE_RADIUS + Magnet.GRANT.LAG_ALLOWANCE
+end
+
+--- Shortest honest time to drag an object across `dist` studs at the given weight/power.
+function Magnet.minTravelTime(dist: number, weight: number, power: number): number
+	local speed = Magnet.pullSpeed(weight, power)
+	if speed <= 0 then
+		return math.huge -- refused: it can never arrive, so no elapsed time is ever enough
+	end
+	return (dist / speed) * Magnet.GRANT.MIN_TRAVEL_FRACTION
+end
 
 --- Largest honest batch size on the given tier. Anything above this is rejected.
 function Magnet.maxGrantPerTick(tierName: string): number

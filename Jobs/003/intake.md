@@ -11,17 +11,15 @@ Build group 01's remaining items: six shared config modules, a single remote-def
 ## Checklist
 
 - [x] Requirements reviewed (this intake)
-- [x] **Independent reviewer agent run** — given the requirement and the repo, NOT my reasoning.
-      Found 20 findings; the two most severe were verified independently and were real.
-- [x] **Reproduced in PLAY** — three Play cycles. The first crashed on a syntax error, the second
-      exposed a broken economy curve, the third passed. Studio returned to Edit each time.
+- [x] **Independent reviewer agent run** — given the requirement and the repo, NOT my reasoning
+- [x] **Reproduced in PLAY** / exercised in a live Studio session
 - [x] Implementation plan created & agreed
 - [x] Implementation completed
-- [x] **Proof it works** — server boots with 0 fatal / 4 [UNTUNED] warnings, 20 remotes created,
-      dev command invoked end-to-end from the client, rate limiter refused 5 of 30 rapid calls,
-      DevConsole confirmed as exactly 1 LocalScript instance (no double-run).
+- [x] **Proof it works** — see `final-summary.md`
 - [x] Final summary + changelog written
 
 ## Outcome
 
-12 files. The foundation is live and verified in Play, not merely written.
+Repo-wide foundation: 6 config modules, 20 remotes, structural rate limiting, logging, dev
+tools and a client console. Two failed Play runs surfaced a 7-file syntax error and an economy curve
+that made the game uncompletable.

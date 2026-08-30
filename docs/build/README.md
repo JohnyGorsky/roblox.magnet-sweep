@@ -29,7 +29,7 @@ outward from magnet physics without ever asking whether the game is fun yet.
 |---|---|--:|--:|--:|--:|
 | [01](01-foundation.md) | Foundation & sync | 23 | 21 | 2 | 0 |
 | [02](02-industrial-kit.md) | The industrial kit & material system | 47 | 40 | 6 | 1 |
-| [03](03-lighting-and-look.md) | Lighting, atmosphere & quality tiers | 18 | 15 | 2 | 1 |
+| [03](03-lighting-and-look.md) | Lighting, atmosphere & quality tiers | 19 | 16 | 2 | 1 |
 | [04](04-magnet-core.md) | The magnet -- the whole game in one system | 37 | 34 | 2 | 1 |
 | [05](05-workshop.md) | The Workshop hub | 18 | 14 | 3 | 1 |
 | [06](06-boot-and-hud.md) | Boot, loading & the main HUD | 17 | 13 | 4 | 0 |
@@ -41,8 +41,8 @@ outward from magnet physics without ever asking whether the game is fun yet.
 | [12](12-refresh-and-events.md) | Factory Refresh, Shifts & events | 19 | 4 | 6 | 9 |
 | [13](13-zones-3-12.md) | The remaining ten zones | 155 | 130 | 25 | 0 |
 | [14](14-endgame-and-launch.md) | Endgame, monetisation & launch | 68 | 19 | 46 | 3 |
-| | **Total** | **581** | **438** | **124** | **19** |
-| | *of which **MVP** (groups 01-12)* | *358* | *289* | *53* | *16* |
+| | **Total** | **582** | **439** | **124** | **19** |
+| | *of which **MVP** (groups 01-12)* | *359* | *290* | *53* | *16* |
 | | *post-gate (groups 13-14)* | *223* | *149* | *71* | *3* |
 
 ## The order, and why

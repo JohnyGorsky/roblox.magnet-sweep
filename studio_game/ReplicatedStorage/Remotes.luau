@@ -40,7 +40,7 @@ Remotes.SPECS = {
 		kind = "Event",
 		dir = "ClientToServer",
 		rate = "ClaimScrap",
-		note = "Batched collection claim. Server MUST verify each id was one IT spawned, is in that player's zone, and is within radius * MAX_RANGE_SLACK. Never trust the count.",
+		note = "Batched collection claim. Server MUST verify each id was one IT spawned, is owned by that player, is inside Magnet.grantRange() of their root, and has been in PULL for the time the journey really takes. Never trust the count. The reply always fires, even when nothing is accepted, so the client can undo its optimistic hide.",
 	},
 	{
 		name = "ScrapGranted",
@@ -165,6 +165,14 @@ Remotes.SPECS = {
 		kind = "Event",
 		dir = "ServerToClient",
 		note = "The ~12 minute server-wide modifier.",
+	},
+
+	{
+		name = "ReportQuality",
+		kind = "Event",
+		dir = "ClientToServer",
+		rate = "Economy",
+		note = "Client tells the server its measured quality tier so the server can hold that client's pull cap to its own budget. Only ever LOWERS the cap -- the server clamps to the High ceiling, so a lying client cannot raise it.",
 	},
 
 	-- ── dev only ──────────────────────────────────────────────────────────────

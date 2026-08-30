@@ -17,6 +17,13 @@ workspace catalog at `roblox.workspace/Assets/registry/`.
 |---|---|---|---|---|---|---|
 | — | | | | | | *(none yet)* |
 
+## Per-type registries
+
+| File | Covers | Status |
+|---|---|---|
+| [materials.md](materials.md) | the 8 PBR `MaterialVariant`s (32 texture ids) | **landed** — job 004 |
+| [sounds.md](sounds.md) | the 14 sound slots: 9 object families + 5 magnet states | **14 empty**, spec written, awaiting ids |
+
 ## Needed — the standing shortlist
 
 Filled from the build manifest as slots open. Not a shopping list to work through now.

@@ -61,7 +61,7 @@ from its colour before reading a word.
 |---|---|---|---|
 | Factory dark | `#0E1526` | deep navy-slate | background walls, far machinery, void |
 | Steel mid | `#4A545E` | brushed dark steel | frames, gantries, conveyor bodies |
-| Chrome light | `#B8C2CC` | polished steel | pipes, rails, rare-part metal, the spoon |
+| Chrome light | `#B8C2CC` | polished steel | pipes, rails, rare-part metal, the spoon. **`MaterialKit` uses this for `Chrome`** |
 | Hazard yellow | `#FFC21A` | signal yellow | stripes, gantry rails, robot-arm housings |
 | Hazard black | `#14161C` | near-black | the other half of every stripe |
 | Rust | `#8A4B2A` | oxide brown | wear, salvage, the *homemade* robot |
@@ -145,20 +145,34 @@ by setting `part.Material = <BaseMaterial>` + `part.MaterialVariant = "<name>"`.
 The Metalness and Roughness columns are **authoring targets for the greyscale maps**, not settable
 properties (see §1).
 
-> 🔴 **`MS_Chrome` is NOT a `MaterialVariant`.** Measured in job 004: Roblox's AI material
-> generator produces *textured* surfaces, and no roughness map can make a mirror. Built-in
-> `Metal` under `LightingStyle = Realistic` read far more like chrome than any generated
-> variant. Chrome = **built-in `Metal` + a light tint**, and nothing else.
+> 🔴 **`MS_Chrome` is NOT a `MaterialVariant`.** Under the §4 lighting recipe, built-in `Metal`
+> shows **tight, sharp** specular points while every generated variant shows a broad soft
+> wash — and tight specular is what reads as polished. Chrome = **built-in `Metal` + a light
+> tint**, and nothing else.
 >
-> 🔴 **`BasePart.Reflectance` is effectively inert here.** Spheres at Reflectance 0.0, 0.5
-> and 1.0 were indistinguishable — with *and* without a PBR variant, under Realistic
-> lighting with `EnvironmentSpecularScale = 1`. Do not reach for it as a gloss lever, and do
-> not use it as the Low-tier fallback (see §8).
+> ⚠️ **Not because "a roughness map cannot make a mirror"** — that is false; roughness ≈ 0
+> with metalness = 1 *is* a mirror. What defeats the generated chrome is that the generator
+> also emits a **textured ColorMap and NormalMap**, which break the reflection up. Authoring
+> flat greyscale maps by hand (white metalness, near-black roughness) has **not been tried**
+> and remains the untested route to a true PBR mirror.
+>
+> 🔴 **`BasePart.Reflectance` is MATERIAL-DEPENDENT**, which is what Roblox's own docs say:
+> *"may or may not be ignored depending on the `Material` of the part."* Measured under the
+> §4 recipe with a two-material sweep:
+>
+> | Material | 0.0 → 1.0 |
+> |---|---|
+> | `Metal` | **no visible change** — inert |
+> | `SmoothPlastic` | **clear progression** — pale diffuse → dark, strongly reflective |
+>
+> So it is a real lever on non-metals and a dead one on Metal. An earlier draft of this skill
+> claimed it was inert *everywhere*; that was a Metal-only test generalised to the place.
+> Re-measure per material before relying on it, and note both tests were in **Edit**.
 >
 > 🔴 **Part `Color` MULTIPLIES the ColorMap.** So a **neutral** map is worth more than a
 > correctly-coloured one: it can take any zone accent. It is also how `MS_SteelDark` is
 > dark — its generated map came out pale and is tinted at apply time rather than
-> regenerated.
+> regenerated. Requires `AlphaMode = Opaque`, which all eight shipped variants are.
 
 | Variant | Base | Metalness | Roughness | Reads as |
 |---|---|---:|---:|---|
@@ -182,10 +196,10 @@ properties (see §1).
   MeshPart-only and overrides the surface where it applies, and Neon's textures are Studio-bundled with
   no asset ids, so no `MaterialVariant` can reproduce Neon either. (The modern emissive lever is
   `SurfaceAppearance.EmissiveMaskContent`, on meshes.)
-- **`Reflectance` is not a usable lever in this place.** In principle it mirrors the skybox cubemap
-  only (never nearby geometry). In practice, measured in job 004, sweeping it 0.0 → 1.0 produced **no
-  visible change at all**, with or without a PBR variant. `EnvironmentSpecularScale` was already 1, so
-  the usual explanation does not apply. Treat it as inert until someone re-measures it in Play.
+- **`Reflectance` works on non-metals and not on Metal.** It mirrors the skybox cubemap only, never
+  nearby geometry. Measured: inert on `Metal`, clearly active on `SmoothPlastic`. Roblox's docs say the
+  behaviour is per-material, so **measure the material you are actually using**. Both measurements were
+  taken in Edit and neither has been confirmed in Play.
 
 - **Apply surfaces through `MaterialKit`, never by hand.** Two of the nine are not what their name
   suggests — Chrome has no variant, SteelDark is tinted — and call sites should not have to know.
@@ -324,10 +338,12 @@ change.
 The tier is chosen from a measured frame time, never from `UserInputService.TouchEnabled` alone — a
 tablet is not a low-end phone and a low-end laptop is not a high-end one.
 
-> **The Low tier drops `MaterialVariant` entirely** rather than swapping to `Reflectance`. Reflectance
-> was measured as inert (§3), so a Reflectance fallback would have been a no-op that *looked* like a
-> saving. Dropping the variant is a real one: no texture fetches, no PBR sampling, and the palette
-> colour still carries the read.
+> **The Low tier drops `MaterialVariant` entirely** rather than swapping to `Reflectance`. The saving
+> is real and direct — no texture fetches, no PBR sampling — and the palette colour still carries the
+> read. Reflectance is *not* the fallback because it is inert on `Metal` (§3), which is the base
+> material of five of the nine surfaces. This reverses
+> [decision 0012](../../../docs/decisions/0012-mobile-first-quality-tiers.md)'s original wording and is
+> recorded as [decision 0016](../../../docs/decisions/0016-low-tier-drops-the-variant.md).
 
 ---
 

@@ -10,35 +10,27 @@ here reads as progress it is not.
 
 | | State |
 |---|---|
-| **Design** | ✅ Complete. The 87-section spec is redistributed into `docs/` with a coverage table |
-| **Task list** | ✅ Complete. 14 groups, **581 items**, sequenced into **28 jobs** to the MVP gate |
-| **Place** | ✅ Created. `111667188608192`, universe `10764307230`, `StreamingEnabled` already on |
-| **Sync** | ✅ Connected and **VERIFIED** — flat layout, 6 synced service folders, suffixes and the double-run trap all observed (job 002) |
-| **Code** | ❌ None |
-| **Assets** | ❌ None sourced, and none should be until a slot needs one. Concept art and the spec are in `assets/` |
+| **Design** | ✅ Complete. The 87-section spec redistributed into `docs/`, with a coverage table |
+| **Task list** | ✅ Complete. 14 groups, 581 items, sequenced into 28 jobs |
+| **Place** | ✅ Live. `111667188608192`, universe `10764307230`. `StreamingEnabled` on, `MaxPlayers` 12, `LightingStyle` Realistic |
+| **Sync** | ✅ Connected and **VERIFIED** — flat layout, 6 synced service folders (job 002) |
+| **Code** | ✅ 16 modules. Config, remotes, rate limiting, logging, dev tools, materials, kit |
+| **Assets** | ✅ 32 PBR maps for 8 `MaterialVariant`s, logged in two registries |
+| **Kit** | ✅ 24 pieces / 83 parts, generated from spec, tiling verified by assembled corridor |
+| **Gameplay** | ❌ **None yet.** Nothing is playable. The magnet does not exist |
 
-## ✅ What Job 001 delivered
+## ✅ Jobs completed
 
-- **Plumbing** — `magnet-sweep` registered in `roblox.workspace/tools/job.py`; `CLAUDE.md`,
-  `README.md`, `.gitignore`, `.jobconfig.json`, and the repo folder tree to workspace convention.
-- **Two skills** — [`magnet-sweep-project`](../.claude/skills/magnet-sweep-project/SKILL.md) (the entry
-  point, the non-negotiables) and [`magnet-sweep-style`](../.claude/skills/magnet-sweep-style/SKILL.md)
-  (the glossy-metal look, the palette, the material kit, the lighting recipe, quality tiers).
-- **The design pack** — 7 game docs, 16 system docs, 5 content docs (including the full **96-part**
-  catalog), 13 decisions, the feature template, 2 roadmap docs.
-- **[The build manifest](build/README.md)** — 14 groups, 581 items (the MVP is **358** of them),
-  ordered MVP-first around [the gate](roadmap/mvp.md#the-gate) rather than by the spec's phase list,
-  plus **[the job ladder](build/job-order.md)** — the same work sliced into 28 jobs in dependency order.
-- **[PITFALLS.md](PITFALLS.md)** — 47 entries: *incident → rule → the check that catches it*, with the
-  anticipatory ones labelled as such rather than dressed up as history.
-- **[Spec coverage](build/spec-coverage.md)** — all 87 sections mapped, 6 deliberate divergences, and an
-  explicit list of what the spec never specified.
-- **Four scripts in `tools/`** — `gen-build-manifest.py`, `gen-spec-coverage.py`,
-  `gen-content-catalogs.py` (the zones page and the 96-part catalog) and two checkers,
-  `verify-catalog-vs-spec.py` and `check-links.py`. Every count on those pages is **computed**, never
-  typed ([PITFALLS #9](PITFALLS.md#9-coverage-by-link-is-not-coverage)).
+| # | Job | Outcome |
+|---|---|---|
+| **001** | Repo scaffold, design pack, project skill | 87-section spec → `docs/`; 2 skills; 13 decisions; 581-item manifest; PITFALLS. Reviewer found 7 wrong engine claims — 2 inherited from a shared workspace skill (`workspace/findings/0002`) |
+| **002** | Place setup + sync probe | Layout **observed**, not guessed: flat, 6 synced folders. Caught the `.client.luau` double-run and the fact that `Lighting.Technology` cannot even be read |
+| **003** | Config skeleton, remotes, rate limiter, dev tools | 6 config modules, 20 remotes, structural rate limiting, dev console. Reviewer caught an economy curve that made **zone 12 unreachable** (4.3×10⁵⁸ coins) |
+| **004** | Material kit | 8 `MaterialVariant`s + built-in Metal for Chrome; `MaterialKit`; lighting recipe applied. Reviewer caught that a claim I published — "Reflectance is inert" — was **wrong**; it is material-dependent |
+| **005** | Industrial kit geometry | 24 pieces / 83 parts generated from `KitSpec`. My first validator enforced the wrong invariant; the corrected one found 3 real overhang bugs |
 
-The source spec and concept art are untouched in `assets/`.
+**Pattern worth noting:** every job so far has had a real defect found by review or by running it. Three
+were things I had already reported to you as working.
 
 ## 🎨 The four decisions you made at intake
 
@@ -107,12 +99,10 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 
 | # | What | Why it needs you |
 |---:|---|---|
-| 1 | **Commit Job 001** | Claude never commits. You committed `cf6a90a` mid-session, which captured roughly the first third of this job; everything written after it is still uncommitted |
-| 2 | **Create the MAGNET SWEEP place** and give me its id | Cannot be done over MCP |
-| 3 | **Studio open on it** for the sync probe | MCP has no connectivity otherwise |
-| 4 | **Social Slots + access level** — the last two place settings | `MaxPlayers` (12), `LightingStyle` (Realistic) and `StreamingEnabled` are done. `Roblox optimized` social slots can push servers past 12, which every performance budget assumes — see [systems/places](systems/places/README.md#social-slots--the-one-still-open) |
-| 5 | **Reopen the place in Studio** before the next publish | Its session still reports `MaxPlayers = 60`; publishing from it could overwrite the 12 |
-| 6 | Later, at [the gate](roadmap/mvp.md#the-gate): **judge whether the sweep feels good** | A *feel* question. Not something Claude can sign off |
+| 1 | **Commit the work** | Claude never commits. You committed twice mid-session; everything after `1a2c6a6` is uncommitted |
+| 2 | **Social Slots + access level** — the last two place settings | `Roblox optimized` social slots can push a server past 12, which every performance budget assumes. Decide before the place is joinable — see [systems/places](systems/places/README.md#social-slots--the-one-still-open) |
+| 3 | **Reopen the place in Studio** before the next publish | Its session reported `MaxPlayers = 60` after you set 12 on the web; publishing from a stale session could overwrite it |
+| 4 | Later, at [the gate](roadmap/mvp.md#the-gate): **judge whether the sweep feels good** | A *feel* question, played. Not something Claude can sign off |
 
 ---
 

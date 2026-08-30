@@ -5,11 +5,12 @@
 	Mobile sets the budget (decision 0012). The glossy look ships as a TIER on top of a
 	phone floor that is never optional.
 
-	MEASURED IN STUDIO, job 004:
-	  * BasePart.Reflectance is INERT here -- 0.0 vs 0.5 vs 1.0 was indistinguishable, with and
-	    without a PBR variant, under Realistic lighting with EnvironmentSpecularScale = 1. So the
-	    Low tier drops MaterialVariant entirely rather than "falling back to Reflectance", which
-	    would have been a no-op that looked like a saving.
+	MEASURED IN STUDIO, job 004 (in EDIT -- not yet confirmed in Play):
+	  * BasePart.Reflectance is MATERIAL-DEPENDENT, as Roblox's docs state. Inert on Metal;
+	    clearly active on SmoothPlastic. Five of the nine kit surfaces are Metal-based, so it is
+	    not a usable global fallback -- the Low tier drops MaterialVariant entirely instead
+	    (decision 0016). An earlier note here claimed it was inert everywhere; that was a
+	    Metal-only test generalised to the whole place.
 	  * Part Color MULTIPLIES the ColorMap, so a neutral map takes any palette colour.
 
 	MEASURED IN STUDIO, job 002:
@@ -34,7 +35,11 @@ export type Tier = {
 	depthOfField: boolean,
 	usePBR: boolean, -- MaterialVariant maps vs built-in material + flat palette colour
 	meshSurfaceAppearance: boolean, -- SurfaceAppearance is MeshPart-only
-	decorativeLightRange: number, -- studs; decorative PointLights beyond this are disabled
+	--- Studs. A decorative light's Range is CLAMPED to this; it is never switched off (see
+	--- QualityController.applyLights). ⚠️ It must sit BELOW the largest authored light range
+	--- in the kit or the tier does nothing: it was 40/60/10000 against a kit whose biggest
+	--- light is 18, so the cull was inert at every tier. Bootstrap now asserts this.
+	decorativeLightRange: number,
 	particleRateScale: number,
 	trails: boolean,
 	maxConcurrentPull: number,
@@ -53,7 +58,7 @@ Quality.TIERS = {
 		depthOfField = false,
 		usePBR = false,
 		meshSurfaceAppearance = false,
-		decorativeLightRange = 40,
+		decorativeLightRange = 10, -- [UNTUNED] clamps the kit's 12/14/16/18 lights
 		particleRateScale = 0.5,
 		trails = false,
 		maxConcurrentPull = Magnet.MAX_CONCURRENT_PULL.Low,
@@ -66,7 +71,7 @@ Quality.TIERS = {
 		depthOfField = false,
 		usePBR = true,
 		meshSurfaceAppearance = true,
-		decorativeLightRange = 60,
+		decorativeLightRange = 15, -- [UNTUNED] clamps only the 16 and 18 lights
 		particleRateScale = 1.0,
 		trails = false,
 		maxConcurrentPull = Magnet.MAX_CONCURRENT_PULL.Medium,
@@ -79,7 +84,7 @@ Quality.TIERS = {
 		depthOfField = true, -- reserved for the Robot Bay install cinematic
 		usePBR = true,
 		meshSurfaceAppearance = true,
-		decorativeLightRange = 10000, -- effectively unlimited; a finite value stays serialisable
+		decorativeLightRange = 10000, -- above any authored range: High clamps nothing
 		particleRateScale = 1.0,
 		trails = true,
 		maxConcurrentPull = Magnet.MAX_CONCURRENT_PULL.High,
@@ -98,23 +103,30 @@ Quality.DETECT = {
 	HIGH_IF_MS_BELOW = 12.0, -- ~83fps or better -> High
 	RECHECK_INTERVAL = 60, -- re-evaluate periodically; a zone change can shift the load
 	HYSTERESIS_MS = 3.0, -- avoid flapping between tiers
+	--- Seconds to wait after the world has loaded and the character exists, before the first
+	--- measurement. ⚠️ Without this the sample lands in the first seconds of the session --
+	--- textures decompressing, world streaming, often no character yet and almost nothing being
+	--- drawn -- which is the least representative window in the whole session and the one the
+	--- entire tier decision used to be taken in.
+	SETTLE_SECONDS = 3.0,
 }
 
 --------------------------------------------------------------------------------
 -- The reference device and the budgets.
 --
--- ⚠️ NOT YET CHOSEN. Every measurement in docs/systems/performance depends on these, and
--- until they are set, "is this fast enough?" has no answer. Choosing them is the FIRST
--- item of build group 03, not an implied prerequisite.
+-- The budget lives in Config/Perf, which is its single source of truth and which is honest
+-- about which numbers are TARGETs, which are MEASURED, and which can only be answered on real
+-- hardware. Do not duplicate it here.
+--
+-- ⚠️ This block carried a "NOT YET CHOSEN -- until they are set, is this fast enough has no
+-- answer" banner three lines above `CHOSEN = true`, and Bootstrap printed that constant as
+-- `budgets=%s`. No state of the world could ever have made it print false. A world fact
+-- asserted from a literal is not a fact (PITFALLS #3), so the flag is gone: whether budgets
+-- exist is answered by reading Config/Perf, where they either are or are not.
 --------------------------------------------------------------------------------
 
 Quality.BUDGET = {
-	CHOSEN = false,
-	REFERENCE_DEVICE = nil :: string?,
-	TARGET_FRAME_MS = 33.3, -- 30fps; the floor the design assumes
-	MAX_CLIENT_MEMORY_MB = nil :: number?,
-	MAX_DRAW_CALLS = nil :: number?,
-	MAX_SHADOW_CASTING_LIGHTS = 8, -- from the style skill; not yet verified on device
+	SEE = "Config/Perf",
 }
 
 function Quality.default(): TierName

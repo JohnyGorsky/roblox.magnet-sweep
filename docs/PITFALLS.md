@@ -459,7 +459,34 @@ verified.
 **Check:** an attack clip set to `Core` loses to `Idle`. If a robot's attack animation "does not play",
 check the priority before checking anything else.
 
-### 47. A capability that works in the command bar and fails in a Script
+### 47. A type annotation on a table FIELD is a syntax error, and it looks fine
+
+> **The incident.** Twice. Job 003 shipped `Remotes.SPECS: { Spec } = {` in **seven of eleven files**
+> and the whole server failed at require time. Job 006 then did the identical thing in
+> `Config/Perf.luau` — after the first one had been found, fixed and written up.
+
+**Rule:** Luau allows a type annotation on a **local declaration**, a parameter and a return. Not on a
+table-field assignment.
+
+```lua
+Perf.REGISTER: { Measurement } = { ... }   -- SYNTAX ERROR
+Perf.REGISTER = { ... } :: { Measurement } -- correct
+local x: { Measurement } = { ... }          -- also correct
+```
+
+**Why it keeps happening:** it reads exactly like the local-declaration form, and the error surfaces at
+*require* time in a different file than the one you edited — job 006's error pointed at `Perf:87` from a
+stack rooted in `Bootstrap:53`.
+
+**Check:** grep before running.
+
+```
+grep -rn "^[A-Za-z_][A-Za-z0-9_.]*\.[A-Za-z0-9_]*\s*:\s*[^=]*=\s*{" studio_game --include=*.luau
+```
+
+Should return nothing.
+
+### 48. A capability that works in the command bar and fails in a Script
 
 > **The incident.** `TriangleMeshPart.CollisionFidelity` is `PluginSecurity` on write and documented as
 > not manipulable by scripts at runtime — but the Studio command bar has plugin capability, so it works
@@ -469,3 +496,97 @@ check the priority before checking anything else.
 `execute_luau`.
 
 **Check:** for each property a design says to set at runtime, confirm its write `security:` is `None`.
+
+### 49. A timeout that loses a race with gravity
+
+> **The incident.** Abandoned scrap in `PULL` was rescued by a 6.0s reaper. Scrap is
+> `CanCollide = false` by design, so an abandoned piece does not land — it falls *through* the
+> floor and reaches `FallenPartsDestroyHeight` in **2.26s** at gravity 196. The reaper was correct
+> in shape and never once fired in time: 45 of 45 objects were destroyed by the engine, and the
+> pool bled a part per abandonment, permanently.
+
+**Rule:** when a cleanup competes with a physical process, bound the **state**, not the clock. A
+height/distance limit fires as soon as the thing has moved; a timeout fires when the thing is
+already gone. Keep the timeout as a backstop, never as the mechanism.
+
+**Check:** compute both times from the LIVE world, not from constants, and assert the ordering at
+startup: `sqrt(2 * FALL_LIMIT / workspace.Gravity)` must be well under
+`sqrt(2 * -FallenPartsDestroyHeight / workspace.Gravity)`.
+
+### 50. An anti-cheat gate that measures the wrong quantity
+
+> **The incident.** Two in one system. The collection range was `pullRadius * 1.35` = 16.2 studs
+> against an arrival radius of 2.5 — so *entering the field* was the collection and 13.7 studs of
+> every pull were optional; 80 of 80 objects were granted without moving any. Then the travel-time
+> gate written to fix it measured **distance moved**, which is zero for an object that never moves
+> — vacuous for precisely the case it guarded.
+
+**Rule:** derive a gate from the geometry it is checking, never by scaling a number that belongs to
+a different thing. Here: `TIP_OFFSET + ARRIVE_RADIUS + LAG_ALLOWANCE`, and the time gate measures
+the **journey the object needed to make**, not the distance it happens to have covered.
+
+**Check:** state the gate and the thing it must be tighter than in the same log line at startup, so
+the day they meet is visible: `grant gate 9.1 vs radius 12.0`.
+
+### 51. The server judges a position it has not received yet
+
+> **The incident.** After `SetNetworkOwner(player)`, the object's position is authored by the
+> client. The client hid an arrived object and claimed it in the same frame; the server was still
+> holding the pre-pull position, up to a full pull radius away, and rejected **43% of honest
+> collections**. Worse, the arrived object was unanchored, `CanCollide = false` and no longer
+> driven, so it free-fell 6.13 studs during the 0.25s batch wait — out of its own grant gate.
+
+**Rule:** anything the client hands to the server for validation must be **held still and given a
+round trip**. Pin the object, and validate on the tick *after* arrival, not the next one that fires.
+
+**Check:** a per-gate rejection census on an honest sweep must read zero. A bare total ("13 of 30
+rejected") cannot distinguish an exploit from a gate that is refusing real play.
+
+### 52. A threshold chosen in one file against values chosen in another
+
+> **The incident.** `Config/Quality.decorativeLightRange` was 40 / 60 / 10000 studs. Every light
+> `KitSpec` authors is 4, 5, 12, 14 or 16, with a `KitBuilder` default of 18. `Range <= threshold`
+> was therefore true for every light in the game at every tier, forever: the cull could not fire,
+> and it logged `lights toggled=0` on a healthy run and a broken one alike. The same function read
+> a `Hero` attribute nothing writes, while the kit stamps `Decorative`, which nothing reads.
+
+**Rule:** when a threshold gates values produced elsewhere, **derive the comparison from those
+values** and assert the relationship at startup, stating both numbers. And when one module stamps
+a marker for another to consume, grep that the reader and the writer use the same name — a
+producer with no consumer is a lie in a table.
+
+**Check:** `light clamp: kit max 18 studs vs Low 10 / Medium 15 / High 10000` — printed from
+`KitSpec.maxLightRange()`, not typed, with an error when a tier's threshold reaches the maximum.
+
+### 53. A client-side visual downgrade that the server keeps undoing
+
+> **The incident.** The Low quality tier drops `MaterialVariant` to skip PBR sampling.
+> `MaterialVariant` is a **replicated, server-owned property**, and `MaterialKit.setUsePBR` flips a
+> module-level local — modules are per-VM, so the client's decision never reached the server,
+> whose flag stayed true. Every scrap spawn re-stamped the variant on top of the client's strip.
+> Measured: 37 → 0 → **37** as soon as the server spawned more. `refresh` was one-shot.
+
+**Rule:** a client cannot opt out of a property the server writes. Either the server must know the
+client's tier, or the client must **maintain** its override rather than apply it once. And for
+**pooled** objects, `DescendantAdded` never fires — they are re-stamped while already parented —
+so a reconciling sweep is the mechanism, not a signal.
+
+**Check:** strip on the client, make the server spawn more, and count again. If the number climbs,
+the override is decorative.
+
+### 54. Measuring the device during the loading screen
+
+> **The incident.** The quality tier was chosen from a frame time sampled 2–6 seconds into the
+> session — while the kit's PBR maps were still decompressing, the world was still streaming, and
+> often before the character existed, so the camera was drawing almost nothing and frames looked
+> cheap. A phone could classify **High** and hold a 160-object physics cap for the whole first
+> minute. Separately, the bootstrap `apply(default())` set `current` before the first
+> classification, so the hysteresis branch always fired and the documented thresholds (26 ms /
+> 12 ms) were dead constants no client ever used — the real gates were 29 and 9.
+
+**Rule:** gate any device measurement on `game.Loaded`, on the character existing, and on a settle
+delay. And a "current state" variable that feeds hysteresis must not be set by a provisional
+default, or the neutral entry path is unreachable.
+
+**Check:** log the thresholds actually applied, not the ones in the config.
+

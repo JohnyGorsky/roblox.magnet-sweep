@@ -52,7 +52,7 @@ homemade robot, and release that robot into a persistent Arena. Mobile-first. **
 
 ## Accepted decisions
 
-**[decisions/INDEX.md](decisions/INDEX.md)** — 15 records. Never silently overturn one.
+**[decisions/INDEX.md](decisions/INDEX.md)** — 17 records. Never silently overturn one.
 
 Sixteen open questions were answered on 2026-08-29; two became records
 ([0014](decisions/0014-the-owning-guardian-chases.md) the steal-an-egg extraction rule,
