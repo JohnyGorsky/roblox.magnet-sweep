@@ -400,10 +400,20 @@ local function tick()
 					part:SetAttribute("ScrapState", "IDLE")
 					part:SetAttribute("PullOwner", nil)
 				end
-			elseif entry.state ~= "REACT" then
+			else
 				-- inside REACT range: shake, spark, and say WHY if it cannot be lifted
+				local want = canLift and "REACT" or "REFUSE"
+				-- ⚠️ Compare the ATTRIBUTE, not `entry.state`. There is no REFUSE entry state --
+				-- both cases store "REACT" -- so guarding on `entry.state ~= "REACT"` made this
+				-- a one-shot edge: the attribute was written once and never revisited while the
+				-- object stayed in range. Buy the Power upgrade that fixes a too-heavy object
+				-- and it kept shaking REFUSE, so the game said "still too heavy" immediately
+				-- after the purchase that fixed it. REFUSE is the tutorial for upgrading Power;
+				-- it has to stop the moment the upgrade lands.
 				entry.state = "REACT"
-				part:SetAttribute("ScrapState", canLift and "REACT" or "REFUSE")
+				if part:GetAttribute("ScrapState") ~= want then
+					part:SetAttribute("ScrapState", want)
+				end
 			end
 		end
 	end

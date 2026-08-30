@@ -244,13 +244,168 @@ function MagnetState.emptyCarried(player: Player): number
 	return had
 end
 
+--- ⚠️ Clamped at zero, and it says so when it clamps.
+---
+--- Found by testing: `dev("magnet.coins", -99999)` drove a live balance to **-87,629**, and the
+--- upgrade panel then correctly but absurdly quoted "need 87,679 coins". Nothing in the grant
+--- path passes a negative today, so this is not a live bug -- but a currency that can go
+--- negative is one careless caller away from being one, and a debt is not a state this game has
+--- any rules for. Spending goes through `MagnetState.upgrade`, which checks affordability
+--- first; this function is for INCOME.
 function MagnetState.addCoins(player: Player, n: number)
-	entryFor(player).coins += n
+	local e = entryFor(player)
+	local wanted = e.coins + n
+	if wanted < 0 then
+		Log.warn("%s: coins would have gone to %d -- clamped to 0", player.Name, wanted)
+		wanted = 0
+	end
+	e.coins = wanted
 	MagnetState.push(player)
 end
 
 function MagnetState.coins(player: Player): number
 	return entryFor(player).coins
+end
+
+--------------------------------------------------------------------------------
+-- Buying a level. The one place coins turn into a magnet.
+--------------------------------------------------------------------------------
+
+--- The four upgrade tracks, each naming its level field and the two Economy curves that
+--- describe it. Config-first: no cost, growth or ceiling appears in this file.
+---
+--- ⚠️ `Economy.<x>Cost(level)` is the price to go FROM `level` TO `level + 1` -- that is the
+--- convention `Economy.coinsToReachPower` walks, and reading it as "the price at this level"
+--- charges the player for the step they already own.
+export type Track = {
+	id: string,
+	levelKey: string,
+	label: string,
+	cost: (number) -> number,
+	value: (number) -> number,
+	--- Whole numbers are displayed bare; Radius and Drive are fractional and get one decimal.
+	decimals: number,
+}
+
+MagnetState.TRACKS = {
+	{ id = "power", levelKey = "powerLevel", label = "MAGNET POWER",
+		cost = Economy.powerCost, value = Economy.powerAtLevel, decimals = 0 },
+	{ id = "radius", levelKey = "radiusLevel", label = "PULL RADIUS",
+		cost = Economy.radiusCost, value = Economy.radiusAtLevel, decimals = 1 },
+	{ id = "capacity", levelKey = "capacityLevel", label = "CAPACITY",
+		cost = Economy.capacityCost, value = Economy.capacityAtLevel, decimals = 0 },
+	{ id = "drive", levelKey = "driveLevel", label = "MAGNETIC DRIVE",
+		cost = Economy.driveCost, value = Economy.driveAtLevel, decimals = 1 },
+} :: { Track }
+
+--- ⚠️ TRACKS and LEVEL_KEYS are two lists of the same thing, written for two different
+--- consumers -- the shop and the future save file. PITFALLS #52: when one module's table has to
+--- agree with another's, assert it where it is cheap to see rather than discovering the day a
+--- track silently stops persisting. A track missing from LEVEL_KEYS is a stat the player buys
+--- and loses on rejoin, which looks like a save bug and is not one.
+do
+	local byKey: { [string]: boolean } = {}
+	for _, k in ipairs(MagnetState.LEVEL_KEYS) do
+		byKey[k] = true
+	end
+	for _, t in ipairs(MagnetState.TRACKS) do
+		assert(byKey[t.levelKey], ("track %q names level key %q, which LEVEL_KEYS does not list -- it would not persist"):format(t.id, t.levelKey))
+		byKey[t.levelKey] = nil
+	end
+	local orphan = next(byKey)
+	assert(not orphan, ("LEVEL_KEYS lists %q, which no upgrade track sells -- it can never rise"):format(tostring(orphan)))
+end
+
+local trackById: { [string]: Track } = {}
+for _, t in ipairs(MagnetState.TRACKS) do
+	trackById[t.id] = t
+end
+
+export type Quote = {
+	track: string,
+	label: string,
+	level: number,
+	value: number,
+	nextValue: number,
+	cost: number,
+	affordable: boolean,
+	maxed: boolean,
+	decimals: number,
+}
+
+--- What each track currently costs this player, and whether they can pay.
+---
+--- ⚠️ Computed on the SERVER and sent down, rather than letting the client derive it from the
+--- shared Economy module. The client COULD do the arithmetic -- Economy is in ReplicatedStorage
+--- -- but then the price on screen and the price charged would be two implementations that
+--- have to agree, and the first time they disagreed the player would see it as being
+--- overcharged. One number, computed once, in the place that takes the coins.
+function MagnetState.quotes(player: Player): { Quote }
+	local e = entryFor(player)
+	local out: { Quote } = {}
+	for _, t in ipairs(MagnetState.TRACKS) do
+		local level = (e :: any)[t.levelKey] :: number
+		local maxed = level >= Economy.UPGRADE.MAX_LEVEL
+		local cost = t.cost(level)
+		table.insert(out, {
+			track = t.id,
+			label = t.label,
+			level = level,
+			value = t.value(level),
+			nextValue = t.value(level + 1),
+			cost = cost,
+			affordable = not maxed and e.coins >= cost,
+			maxed = maxed,
+			decimals = t.decimals,
+		})
+	end
+	return out
+end
+
+--- Buy exactly one level. Returns (bought, reason).
+---
+--- ⚠️ The server recomputes the price from the player's CURRENT level; it never receives one.
+--- A remote that accepted a cost would let a client name its own price, which is decision 0007
+--- ("the server owns currency") failing in the most direct way available.
+---
+--- ⚠️ Deducts BEFORE raising the level, and re-reads the level from the entry rather than from
+--- a value captured earlier, so two invocations racing on the same frame cannot both pass the
+--- affordability check against the same balance. Luau is single-threaded per script and there
+--- is no yield between the check and the deduction, which is what actually makes this safe --
+--- the ordering is here so that a future `await` inserted in the middle fails loudly rather
+--- than quietly granting a free level.
+function MagnetState.upgrade(player: Player, trackId: string): (boolean, string)
+	local t = trackById[trackId]
+	if not t then
+		return false, "unknown track"
+	end
+	local e = entryFor(player)
+	local level = (e :: any)[t.levelKey] :: number
+	if level >= Economy.UPGRADE.MAX_LEVEL then
+		return false, "already at maximum"
+	end
+	local cost = t.cost(level)
+	if e.coins < cost then
+		return false, ("need %d coins"):format(cost - e.coins)
+	end
+
+	e.coins -= cost
+	;(e :: any)[t.levelKey] = level + 1
+
+	-- Drive is written onto the Humanoid, so buying it has to reach the character or the
+	-- purchase is invisible until the next respawn (see `applyDrive`).
+	MagnetState.applyDrive(player)
+	MagnetState.push(player)
+
+	Log.info("%s bought %s L%d->L%d for %d coins", player.Name, t.id, level, level + 1, cost)
+	-- ⚠️ Formatted to the track's OWN `decimals`. `tostring()` here produced
+	-- "MAGNETIC DRIVE -> 17.200000000000003" and "PULL RADIUS -> 13.3046145" -- float noise, in
+	-- the string the client puts on screen as the confirmation of a purchase. The quote path
+	-- already honours `decimals`; this one silently did not.
+	local shown = if t.decimals > 0
+		then ("%.1f"):format(t.value(level + 1))
+		else ("%d"):format(t.value(level + 1))
+	return true, ("%s -> %s"):format(t.label, shown)
 end
 
 --------------------------------------------------------------------------------
@@ -289,10 +444,10 @@ end
 function MagnetState.push(player: Player)
 	local e = entryFor(player)
 	local s = MagnetState.stats(player)
+	-- `getEvent` ERRORS when the remote is missing; it never returns nil. An earlier `if not ev
+	-- then return end` here read as a guard and was dead code -- worse than absent, because it
+	-- implied a failure mode that is handled and is not.
 	local ev = Remotes.getEvent("StatsChanged")
-	if not ev then
-		return
-	end
 	ev:FireClient(player, {
 		coins = e.coins,
 		scrap = e.scrap,

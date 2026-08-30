@@ -99,13 +99,32 @@ end
 
 Magnet.FLOW = {
 	MAX_TIER = 5,
-	PICKUPS_PER_TIER = 8, -- collections needed to advance one tier
+	--- Collections needed to advance one tier.
+	---
+	--- ⚠️ MUST EXCEED THE LARGEST BATCH, or the ladder is invisible on the way up. Collection
+	--- is batched every GRANT.TICK, so Flow does not arrive one object at a time: it arrives in
+	--- lumps. Measured on a dense field (findings/0000): 20.6 objects/sec, median batch 18,
+	--- largest 51. Against the old value of 8, the median batch was 2.25 tiers and the largest
+	--- took a player from nothing to MAGNET RUSH in a single flush -- so tiers 1-4 were only
+	--- ever seen while DECAYING, never while building.
+	---
+	--- At 60, the largest observed batch is still under one tier, and a Rush is 300 pickups --
+	--- about 15 seconds of sustained sweeping. Flow is frozen during a Rush, so the very large
+	--- batches a Rush produces are not the ones that matter here.
+	PICKUPS_PER_TIER = 60,
 	DECAY_AFTER = 3.0, -- seconds without a pickup before decay starts
-	DECAY_PER_SECOND = 1.5, -- pickups-worth of progress lost per second
+	--- ⚠️ Decay is expressed in TIERS per second and the per-pickup rate is DERIVED from it.
+	--- They were two independent numbers, and raising PICKUPS_PER_TIER without touching a
+	--- hardcoded 1.5/s would have stretched a full decay from 27 seconds to 200 -- a combo you
+	--- cannot lose, which is the thing decision 0018 says a combo must never be.
+	DECAY_TIERS_PER_SECOND = 0.1875, -- ~5.3s to lose one tier, unchanged from the original feel
 	COIN_MULTIPLIER = { 1.0, 1.15, 1.30, 1.50, 1.75, 2.25 }, -- index = tier + 1 (tier 0 = no flow)
 	PULL_SPEED_BONUS = { 1.0, 1.03, 1.06, 1.10, 1.15, 1.25 },
 	PITCH_PER_TIER = 0.06, -- collection sound pitch rise per tier
 }
+
+--- Pickups of progress lost per second once decay starts. Derived, never typed.
+Magnet.FLOW.DECAY_PER_SECOND = Magnet.FLOW.DECAY_TIERS_PER_SECOND * Magnet.FLOW.PICKUPS_PER_TIER
 
 Magnet.RUSH = {
 	DURATION = 8.0, -- seconds of MAGNET RUSH once tier 5 is reached

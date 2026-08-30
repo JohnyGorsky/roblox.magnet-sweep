@@ -33,7 +33,7 @@ local DevTools = {}
 --------------------------------------------------------------------------------
 
 DevTools.AUTHORISED_USER_IDS = {
-	-- [123456789] = true,
+	[5025640608] = true, -- johnygorsky10 (owner)
 } :: { [number]: boolean }
 
 function DevTools.isAuthorised(player: Player): boolean

@@ -49,6 +49,16 @@ local flowTier = 0
 local inRush = false
 local inOvercharge = false
 
+--- ⚠️ Forward declaration. The handler below is connected at the top of the file and the
+--- rig helpers it needs are defined further down; without this, the closure would capture a
+--- GLOBAL `playMagnet` that is nil forever and the sound would silently never play.
+local playMagnet: (any) -> ()
+
+--- ⚠️ These play on the EDGE, not on the value. `StatsChanged` fires on every collection, so
+--- reacting to `s.rush == true` rather than to the transition would retrigger the Rush sound
+--- several times a second for its whole duration.
+local wasRush, wasFull = false, false
+
 statsRemote.OnClientEvent:Connect(function(s)
 	if type(s) ~= "table" then
 		return
@@ -56,9 +66,19 @@ statsRemote.OnClientEvent:Connect(function(s)
 	flowTier = tonumber(s.flowTier) or flowTier
 	if type(s.rush) == "boolean" then
 		inRush = s.rush
+		if inRush and not wasRush then
+			playMagnet(SoundKit.MAGNET.Rush)
+		end
+		wasRush = inRush
 	end
 	if type(s.overcharge) == "boolean" then
 		inOvercharge = s.overcharge
+	end
+	if type(s.full) == "boolean" then
+		if s.full and not wasFull then
+			playMagnet(SoundKit.MAGNET.Full)
+		end
+		wasFull = s.full
 	end
 end)
 
@@ -276,6 +296,30 @@ local nextVoice: { [string]: number } = {}
 local function magnetTip(): BasePart?
 	local r = rig
 	return r and r.emitter.Parent and (r.emitter.Parent :: Attachment).Parent :: BasePart? or nil
+end
+
+--- One-shot magnet sounds (Rush, Full, React, Refuse). Built on demand against the current
+--- tip, and silent while the slot is empty -- `SoundKit.build` returns nil, so there is no
+--- muted `Sound` sitting in the Explorer pretending to be wired.
+local oneShots: { [string]: Sound } = {}
+
+playMagnet = function(slot: any)
+	if not slot or slot.id == "" then
+		return
+	end
+	local host = magnetTip()
+	if not host then
+		return
+	end
+	local existing = oneShots[slot.id]
+	if not existing or existing.Parent ~= host then
+		existing = SoundKit.build(slot, host, "OneShot")
+		if not existing then
+			return
+		end
+		oneShots[slot.id] = existing
+	end
+	existing:Play()
 end
 
 --- ⚠️ Voices are parented to the MAGNET TIP, not to a Folder. A `Sound` under a Folder is

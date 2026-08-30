@@ -10,13 +10,16 @@ Sources: The Last Tide's 31 findings and its sea failure, Roblox Jungle's job re
 mobile rework, ELEVATOR 13's own pitfalls page, and `roblox.workspace/GROUND-RULES.md` §7 and §8 — which
 exist *because* of the Tide sea failure.
 
-**Entries 1-35, 42 and 45-47 each cite a real, traceable incident.** Entries 36-41, 43 and 44 are
+**Entries 1-35, 42, 45-47 and 55-58 each cite a real, traceable incident.** Entries 36-41, 43 and 44 are
 **anticipatory** — they name a failure mode this game's design makes likely, not one already paid for.
 They are labelled where they appear.
 
 Part 6 was written *by* this repo's first independent review, which found seven wrong engine claims in
-the design pack it was reviewing. Those are the freshest entries here and the ones most likely to bite
-again.
+the design pack it was reviewing.
+
+**Entries 55-58 are the freshest**, and all four came out of building one HUD (job 011). Three of them
+are the same shape: a measurement that returned a confident default, and a check that passed because it
+was measuring nothing.
 
 MAGNET SWEEP starts with zero code. That is exactly when these are cheap to install, and exactly when
 they get skipped.
@@ -590,3 +593,77 @@ default, or the neutral entry path is unreachable.
 
 **Check:** log the thresholds actually applied, not the ones in the config.
 
+### 55. A disabled `ScreenGui` reports 800 × 600 forever
+
+> **The incident.** Job 011's `Ui.Layout` created a hidden `ScreenGui` whose only job was to
+> report the usable canvas, and set `Enabled = false` with a comment claiming "it draws nothing;
+> AbsoluteSize is reported regardless". A disabled `ScreenGui` **does not lay out**. It returned
+> the default **800 × 600** at every canvas, on every device, for the whole session — so the HUD
+> was sized against 800 × 600 on a screen that measured **666 × 316**, and the number never once
+> changed to reveal it.
+
+**Rule:** measure from an **enabled** `ScreenGui`. Make it invisible by giving it **no children**,
+never by disabling it. The same applies to anything else read for layout: a disabled or unparented
+GUI reports defaults, confidently.
+
+**Check:** the probe must report a canvas that is *not* 800 × 600 and *not* equal to
+`Camera.ViewportSize` — on the measured phone preset it is 666 × 316 against a 666 × 374 viewport.
+Two round numbers are a default, not a measurement.
+
+### 56. Roblox's touch controls arrive late, and `Visible` is not "on screen"
+
+Two mechanisms, one symptom: a collision check that is measuring nothing.
+
+> **The incident, part one.** At the moment `StarterPlayerScripts` runs, the camera reports a
+> **1 × 1** viewport, the canvas has not been laid out, and `PlayerGui.TouchGui` **does not exist**.
+> The HUD logged `layout clean -- canvas 800x600 ... reserved=0 rects`. That line was true and
+> worthless: a collision check against zero rectangles passes on every screen, broken or not.
+> See [#2](#2-a-verification-that-could-not-fail).
+>
+> **The incident, part two.** `GuiObject.Visible` is one object's own flag. A child of a hidden
+> parent still reports `Visible = true`. Opening a modal set `UserInputService.ModalEnabled = true`,
+> which took Roblox's controls off the screen — confirmed in a screenshot — while
+> `DynamicThumbstickUIModifier`, `ThumbstickStart` and `ThumbstickEnd` all still reported
+> `Visible = true`. Four upgrade rows were flagged as colliding with a control that was not drawn.
+
+**Rule:** the arrival of the touch controls is itself a layout event — re-run the layout when
+`TouchGui` populates, not only when the canvas resizes. And "is it painted" means **walking the
+ancestor chain** plus the `ScreenGui`'s own `Enabled`, never one `Visible` flag.
+
+A false alarm from a collision checker is not harmless. It is how people learn to ignore the real one.
+
+**Check:** the audit must **refuse to report clean** when it has nothing to compare against, and say
+so — `COLLISIONS NOT CHECKED (no reserved rects)`. Print the reserved rects **by name**, not as a
+count: `reserved=0` and `reserved=3` look equally healthy; `reserved: NONE` next to a touch canvas
+does not.
+
+### 57. A `UISizeConstraint.MinSize` silently overrides the size you set
+
+> **The incident.** The upgrade rows were computed at 47 px so that all four tracks would fit a
+> 207 px list. The `Size` was written correctly. They rendered at **56.9 px** and the fourth row
+> stayed below the fold, because the shared `button()` helper attaches a `UISizeConstraint` whose
+> `MinSize` is the preferred 58 px tap target. The property that was edited was right; something
+> else won, and nothing anywhere reported a conflict.
+
+**Rule:** a minimum is not a suggestion. When a component applies a constraint on the caller's
+behalf, it must let the caller state a different floor — and the floor must be a *deliberate,
+documented* value (here, the 44 px degrade allowed by the `mobile` skill), not a silent shrink.
+
+**Check:** after setting a size, **read `AbsoluteSize` back**. Never assume the value written is the
+value that renders. This is the shared `mobile` skill's §4a.8, hit here for real.
+
+### 58. A panel can be the right size and still render as an empty box
+
+> **The incident.** `Scrap.Value` was created with no `Size` and rendered at **0 × 0**. The Scrap
+> panel showed the word `SCRAP`, an empty bar, and nothing else — no number at all. Every
+> rectangle check passed, because the *panel* was the right size in the right place; it was the
+> label inside it that had none. One screenshot found it in a second.
+
+**Rule:** a label helper that does not set a `Size` makes every caller responsible for one, and a
+caller that forgets produces an invisible element that no numeric audit can see. Either the helper
+sizes it, or the layout that owns it must.
+
+**Check:** walk every `TextLabel`/`TextButton` that is genuinely on screen and assert
+`AbsoluteSize > 0` **and** `TextFits`. That is the screenshot turned into something that fails on
+its own, on every canvas — and it is the only one of these four that a rectangle audit could never
+have caught by looking at panels alone.

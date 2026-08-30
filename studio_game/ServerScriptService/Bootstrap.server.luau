@@ -16,6 +16,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local WAIT = 15 -- seconds; generous, but finite
@@ -312,6 +313,16 @@ do
 	end
 end
 
+-- ⚠️ The client cannot decide it is authorised -- `DevTools.isAuthorised` lives on the server
+-- and must stay there. The server states the answer in an attribute, and the audio bench builds
+-- nothing at all unless it is true. Same shape as the quality-tier publish.
+Players.PlayerAdded:Connect(function(player)
+	player:SetAttribute("DevAuthorised", DevTools.isAuthorised(player))
+end)
+for _, player in ipairs(Players:GetPlayers()) do
+	player:SetAttribute("DevAuthorised", DevTools.isAuthorised(player))
+end
+
 MagnetState.start()
 ScrapService.init()
 ScrapService.start()
@@ -335,6 +346,30 @@ end)
 
 RemoteBinder.bindEvent("ReportQuality", function(player: Player, tierName: any)
 	ScrapService.setQualityTier(player, tierName)
+end)
+
+--------------------------------------------------------------------------------
+-- Buying a magnet level. Job 011 -- the HUD's upgrade button needs somewhere real to send a
+-- player, and a button that opens nothing is a placeholder control (GROUND-RULES 10).
+--
+-- ⚠️ ONE remote does both the quote and the purchase, deliberately. If the price were served
+-- by a different call from the one that charges, the two could drift and the player would see
+-- it as being overcharged. `track = nil` quotes; a track name buys. Both replies carry the
+-- FRESH quote table, so the panel is never rendering a price that has already changed.
+--
+-- ⚠️ The cost is recomputed here from the player's own level. Nothing about a price is ever
+-- accepted from the client -- decision 0007.
+--------------------------------------------------------------------------------
+
+RemoteBinder.bindFunction("RequestUpgrade", function(player: Player, track: any): (boolean, any)
+	if track == nil then
+		return true, { reason = "quote", quotes = MagnetState.quotes(player) }
+	end
+	if type(track) ~= "string" then
+		return false, { reason = "track must be a string", quotes = MagnetState.quotes(player) }
+	end
+	local bought, reason = MagnetState.upgrade(player, track)
+	return bought, { reason = reason, quotes = MagnetState.quotes(player) }
 end)
 
 DevTools.register("scrap.spawn", "Spawn a scrap field: scrap.spawn [count] [radius]", function(player, count, radius)
@@ -361,7 +396,11 @@ end)
 
 DevTools.register("magnet.stats", "This player's live magnet state", function(player)
 	local d = MagnetState.debug(player)
-	return true, ("power=%d radius=%d (active %.1f) drive=%d | scrap=%d/%d%s coins=%d | flow=%.1f tier=%d%s"):format(
+	-- ⚠️ `%.1f` on radius and drive. Both are fractional at any level above 0 -- radius is
+	-- geometric, drive is 16 + 0.4*level -- and Luau's `%d` TRUNCATES rather than erroring, so
+	-- this command silently reported "radius=12" for 12.4 and "drive=16" for 16.4. Job 011 is
+	-- what made non-zero levels reachable through gameplay, which is what armed it.
+	return true, ("power=%d radius=%.1f (active %.1f) drive=%.1f | scrap=%d/%d%s coins=%d | flow=%.1f tier=%d%s"):format(
 		d.power, d.radius, d.activeRadius, d.drive, d.scrap, d.capacity,
 		d.full and " SCRAP FULL" or "", d.coins, d.flow, d.flowTier, d.rush and " *** RUSH ***" or "")
 end)
@@ -371,7 +410,7 @@ DevTools.register("magnet.level", "Set an upgrade level: magnet.level power|radi
 		return false, "unknown track: " .. tostring(track)
 	end
 	local d = MagnetState.debug(player)
-	return true, ("%s -> power=%d radius=%d drive=%d capacity=%d"):format(
+	return true, ("%s -> power=%d radius=%.1f drive=%.1f capacity=%d"):format(
 		tostring(track), d.power, d.radius, d.drive, d.capacity)
 end)
 
@@ -379,7 +418,7 @@ DevTools.register("magnet.recycle", "Empty the carried scrap (stands in for the 
 	return true, ("recycled %d scrap"):format(MagnetState.emptyCarried(player))
 end)
 
---- """ + W + """ SERVER-SIDE numbers. A DevTools handler runs on the server, so the memory figures here
+--- ⚠️ SERVER-SIDE numbers. A DevTools handler runs on the server, so the memory figures here
 --- are the SERVER process -- and `Perf.BUDGET.CLIENT_MEMORY_MB` / `TEXTURE_MEMORY_MB` describe
 --- the reference PHONE. Comparing the two would be a confident, meaningless number, so this
 --- command deliberately does not: it reports what it can honestly measure from here and says
@@ -396,6 +435,28 @@ DevTools.register("magnet.overcharge", "Grant a temporary Overcharge (the paid P
 	local n = tonumber(seconds) or Magnet.OVERCHARGE.DURATION
 	MagnetState.grantOvercharge(player, n)
 	return true, ("overcharged for %.0fs -- radius x%.1f, maximum visual state"):format(n, Magnet.OVERCHARGE.RADIUS_MULTIPLIER)
+end)
+
+--- ⚠️ This exists so decision 0018 can be RE-CHECKED rather than assumed. SCRAP FULL is
+--- supposed to be carried by the magnet's own behaviour -- the pull stops while everything in
+--- range still rattles -- and the HUD is only a second voice. The only honest way to know that
+--- is still true is to turn the HUD off and go and fill up.
+DevTools.register("hud.hide", "Hide/show the HUD, to check the magnet still teaches SCRAP FULL on its own", function(player)
+	local hidden = not (player:GetAttribute("HudHidden") == true)
+	player:SetAttribute("HudHidden", hidden)
+	return true, hidden and "HUD hidden -- fill up and see whether the magnet still tells you" or "HUD shown"
+end)
+
+DevTools.register("magnet.coins", "Grant coins, to exercise the upgrade panel: magnet.coins [n]", function(player, n)
+	local amount = math.floor(tonumber(n) or 1000)
+	MagnetState.addCoins(player, amount)
+	return true, ("granted %d coins (now %d)"):format(amount, MagnetState.coins(player))
+end)
+
+DevTools.register("audio.bench", "Open/close the audio bench (same as F3)", function(player)
+	local open = not (player:GetAttribute("DevBenchOpen") == true)
+	player:SetAttribute("DevBenchOpen", open)
+	return true, open and "audio bench OPEN" or "audio bench closed"
 end)
 
 DevTools.register("audio.missing", "List the sound slots with no asset yet", function()

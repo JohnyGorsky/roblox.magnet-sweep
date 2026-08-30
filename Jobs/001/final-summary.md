@@ -145,5 +145,5 @@ deferrable calls.
 ## Next
 
 **Job 002 — create the place and probe the sync layout.** See
-[HANDOFF](../../docs/HANDOFF.md#-the-recommended-next-move). Before any robot code is written, the
+[HANDOFF](../../docs/HANDOFF.md#-the-bigger-picture). Before any robot code is written, the
 `roblox-animation` skill fix (workspace finding 0002) should land, or the next game repeats this.

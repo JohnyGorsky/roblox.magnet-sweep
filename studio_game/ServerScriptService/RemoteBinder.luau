@@ -62,13 +62,17 @@ function RemoteBinder.bindFunction(name: string, handler: FunctionHandler)
 		if not RateLimiter.consume(player, spec.rate :: string) then
 			return false, "rate limited"
 		end
-		local ok, a, b = pcall(handler, player, ...)
-		if not ok then
+		-- ⚠️ `table.pack`, not `local ok, a, b =`. The earlier form captured exactly TWO of the
+		-- handler's return values and silently dropped the rest, so a handler returning
+		-- (ok, reason, payload) delivered nil for the payload with no error anywhere -- on
+		-- either side. Nothing about the call site would have looked wrong.
+		local results = table.pack(pcall(handler, player, ...))
+		if not results[1] then
 			-- a handler that throws must not surface an internal error to the client
-			Log.error("%s handler threw: %s", name, tostring(a))
+			Log.error("%s handler threw: %s", name, tostring(results[2]))
 			return false, "internal error"
 		end
-		return a, b
+		return table.unpack(results, 2, results.n)
 	end
 	Log.debug("bound function %q (bucket %s)", name, spec.rate)
 end

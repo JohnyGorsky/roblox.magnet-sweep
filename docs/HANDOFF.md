@@ -1,6 +1,6 @@
 # Handoff — where we left off
 
-**Snapshot: 2026-08-30.** Read this, then [PITFALLS.md](PITFALLS.md), then
+**Snapshot: 2026-08-30, end of session.** Read this, then [PITFALLS.md](PITFALLS.md), then
 [build/README.md](build/README.md).
 
 ## 🧲 Where the game actually is
@@ -15,14 +15,19 @@ calls **the gate**.
 | **Task list** | ✅ Complete. 14 groups, 582 items, sequenced into jobs |
 | **Place** | ✅ Live. `111667188608192`, universe `10764307230`. `StreamingEnabled` on, `MaxPlayers` 12, `LightingStyle` Realistic |
 | **Sync** | ✅ Connected and **VERIFIED** — flat layout, 6 synced service folders (job 002) |
-| **Code** | ✅ 25 modules — 15 ReplicatedStorage, 6 ServerScriptService, 4 StarterPlayerScripts |
-| **Assets** | ✅ 32 PBR maps for 8 `MaterialVariant`s. ❌ **14 sound slots empty** — see below |
+| **Code** | ✅ 30 modules — 19 ReplicatedStorage (incl. the 4-module `Ui/` layer), 6 ServerScriptService, 5 StarterPlayerScripts. **`tools/luau-analyze.sh` now checks all of it on disk in ~1s** |
+| **Assets** | ✅ 32 PBR maps for 8 `MaterialVariant`s · ✅ 14 of 15 sound slots landed — 🔴 **`UI.Press` is open**, so every button is silent |
 | **Kit** | ✅ 24 pieces / 83 parts, generated from spec, tiling verified by assembled corridor |
 | **Gameplay** | ✅ **The magnet.** Four-state scrap, pooled + capped, batched server grant, Flow → RUSH, Capacity → SCRAP FULL, Magnetic Drive, five VFX states |
-| **Sound** | ❌ **Silent by design.** Every slot empty and announced at startup — a wrong sound is harder to notice than a missing one |
+| **Sound** | ✅ **The game makes noise.** 14 Pro Sound Effects clips landed and verified in Play; `AudioBench` (F3) auditions candidates in the slot they will occupy. The one gap is the UI click |
+| **HUD** | ✅ **The game shows you what you are doing.** Coins, Flow ×1–×5 → RUSH, Scrap/Capacity, SCRAP FULL, banners, and a working upgrade panel. Measured on the phone preset (canvas **666×316**) and clear of Roblox's own thumbstick and jump button. ⚠️ The **desktop** arrangement is built but unverified |
 
-**What is NOT built:** the Workshop, the HUD, zones 1–2, rare cargo and extraction, guardians, the
-robot, the Arena, persistence, the Factory Refresh. Groups 05–12.
+**What is NOT built:** the Workshop, the loading screen, zones 1–2, rare cargo and extraction,
+guardians, the robot, the Arena, persistence, the Factory Refresh. Groups 05, 06's boot half, 07–12.
+
+**Coins now buy something** — job 011 wired `RequestUpgrade` rather than ship a dead button, so
+Magnet Power, Pull Radius, Capacity and Magnetic Drive are all purchasable and the server recomputes
+every price.
 
 ## ✅ Jobs completed
 
@@ -34,10 +39,12 @@ robot, the Arena, persistence, the Factory Refresh. Groups 05–12.
 | **004** | Material kit | 8 `MaterialVariant`s + built-in Metal for Chrome; `MaterialKit`; lighting recipe applied. Reviewer caught that a claim I published — "Reflectance is inert" — was **wrong**; it is material-dependent |
 | **005** | Industrial kit geometry | 24 pieces / 83 parts generated from `KitSpec`. My first validator enforced the wrong invariant; the corrected one found 3 real overhang bugs |
 | **006** | Lighting, atmosphere, quality tiers | Reference device + budgets; tiers chosen from a MEASURED frame time. **Its review later found the tiers changed almost nothing** — see job 009 |
+| **010** | Magnet VFX + sound | Five VFX states on one emitter. Its review found the Rush state **latched on forever** client-side, and that decision 0011's "code gate" was a comment pointing at an assertion that never existed |
 | **007** | Magnet core | Four states, pool, cap, batched grant. Reviewer found 6 criticals: abandoned pulls **bricked a magnet for the session**; a 16.2-stud grant gate against a 2.5-stud arrival |
 | **008** | Flow, RUSH, Capacity, Drive | All four stats real and upgradeable. A full magnet **spun the claim loop at 93% rejection**; Flow re-triggered RUSH forever |
+| **011** | Boot & HUD (the HUD half) | Coins, Flow, Scrap/Capacity, banners, upgrade panel, and a layout audit that ships. **Six defects in my own new code**, three of them checks that passed while measuring nothing — a disabled `ScreenGui` reporting 800x600 forever, `layout clean` against zero rectangles, and a `MinSize` silently overriding a computed height. Wired `RequestUpgrade` so coins buy something |
 | **009** | Quality tiers, repaired | Light cull **could never fire** (kit max 18 vs threshold 40); Low's PBR drop **undone by the server on every spawn** |
-| **010** | Magnet VFX + sound system | Five VFX states on one emitter; 14 sound slots wired and deliberately empty |
+
 
 **Pattern worth noting:** every job so far has had a real defect found by review or by running it, and
 several were things I had already reported to you as working. Job 006 was reported complete and its
@@ -77,27 +84,37 @@ lesson, see [PITFALLS #45](PITFALLS.md#45-the-rendered-docs-site-misreports-depr
 
 ---
 
-## ▶️ The recommended next move
+## ▶️ START HERE — **group 05, the Workshop**
 
-**Group 05 — the Workshop**, then **group 06 — boot and HUD**. The magnet works but the player has
-nowhere to spend anything and no readout of what they are carrying: `MagnetState` pushes coins, scrap,
-capacity, Flow tier and RUSH over `StatsChanged` every time they change, and **nothing renders it.**
-Right now the only way to see your own Flow is a dev command.
+Job #011 is **done** ([summary](../Jobs/011/final-summary.md)). The HUD renders Coins, Magnet Flow,
+Scrap/Capacity, banners and an upgrade panel, measured and verified on the phone preset.
 
-Two things worth doing before or alongside that:
+**Next: [build group 05](build/05-workshop.md).** Coins now buy magnet levels — job 011 wired
+`RequestUpgrade` for real rather than ship a dead button — so group 05 is *putting a physical
+building around a transaction that already works and has been attacked*, not inventing one.
+`magnet.recycle` is still a dev command standing in for the recycle bench.
 
-1. **Fill the 14 sound slots.** [assets/registry/sounds.md](../assets/registry/sounds.md) has one row
-   per slot with length, what it must not contain, and a shortlist. The roadmap's gate question lists
-   **sound** as item 2 of what to fix if sweeping is not satisfying — ahead of the Workshop, ahead of
-   everything downstream. It needs a human to listen.
-2. **Play it and answer the gate question**, which is not something Claude can sign off:
-   *when the player sees a strange object in the distance, do they think "I want that on my robot"?*
-   Everything from group 05 on is wasted if the answer is no. It is answerable today for the sweep
-   half — with the caveat that the sweep is currently silent.
+Read before starting: [PITFALLS](PITFALLS.md) (**58 entries** — #55–#58 are from job 011 and are all
+about measurements that returned a confident default), and `Ui/Layout.luau`, which is now the only
+place a screen is measured.
+
+## ▶️ The bigger picture
+
+After the Workshop: **group 08, rare cargo and escape** — which is what the gate question is actually
+about. It is the strange object worth stealing and the guardian chasing you home.
+
+🔴 **The most valuable next action is still not code.** The roadmap's gate asks: *when the player sees
+a strange object in the distance, do they think "I want that on my robot"?* — and its fix-list, in
+order, is **pull feel, sound, the break-free moment**. All three now exist, and as of job 011 your
+scrap, coins and Flow are finally visible while you judge them. Ten minutes of a human playing it is
+worth more than the next three jobs, and it is explicitly not something Claude can sign off.
 
 ⚠️ **Do not tick build-group checkboxes as a way of tracking progress.** `tools/gen-build-manifest.py`
 rewrites those files and emits `- [ ]` unconditionally, so a tick is erased on the next run. Progress
 lives in `Jobs/`.
+
+⚠️ **`tools/luau-analyze.sh` now exists** (ported from Tide in job 011). Run it before any playtest —
+it catches syntax and type errors on disk in about a second, without Studio.
 
 ---
 
@@ -109,10 +126,10 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 | # | What | Why it needs you |
 |---:|---|---|
 | 1 | **Commit the work** | Claude never commits. You committed twice mid-session; everything after `1a2c6a6` is uncommitted |
-| 2 | **Social Slots + access level** — the last two place settings | `Roblox optimized` social slots can push a server past 12, which every performance budget assumes. Decide before the place is joinable — see [systems/places](systems/places/README.md#social-slots--the-one-still-open) |
-| 3 | **Reopen the place in Studio** before the next publish | Its session reported `MaxPlayers = 60` after you set 12 on the web; publishing from a stale session could overwrite it |
-| 4 | **14 sound ids** — [assets/registry/sounds.md](../assets/registry/sounds.md) | I searched our catalog and the Creator Store and wrote the spec per slot; a human picks and listens. The audio rule forbids me filling these with a guess |
-| 5 | Now answerable: at [the gate](roadmap/mvp.md#the-gate), **judge whether the sweep feels good** | A *feel* question, played. Not something Claude can sign off. The sweep exists today — but it is silent until row 4 lands, and sound is item 2 of the gate's own fix-list |
+| 2 | **Reopen the place in Studio** before the next publish | Its session reported `MaxPlayers = 60` after you set 12 on the web; publishing from a stale session could overwrite it |
+| 3 | **One sound id: `UI.Press`** — [assets/registry/sounds.md](../assets/registry/sounds.md) | The other 14 landed. **Every button in the game is silent** until this one does, and style §7 says silence reads as broken. Spec written, audition it with F3. The audio rule forbids me filling it with a guess |
+| 4 | At [the gate](roadmap/mvp.md#the-gate), **judge whether the sweep feels good** | A *feel* question, played. Not something Claude can sign off. Everything needed to judge it now exists: the pull, the sound, and — since job 011 — a HUD that shows you what you are earning while you do it |
+| 5 | **One desktop Play session**: Test → Device → *off*, then Play | Job 011's layout has two arrangements and only the touch one is verified. The Device Emulator has **no scripting API** — I probed `StudioService`, `settings():GetService("Studio")`, `RunService` and `UserInputService` — so I cannot switch it off from here. One click settles it |
 
 ---
 

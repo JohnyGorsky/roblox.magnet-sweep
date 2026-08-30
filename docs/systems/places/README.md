@@ -95,12 +95,13 @@ Both directions verified.
 | Maximum Visitor Count | ✅ **12** on Creator Hub | See the stale-session warning below |
 | `Lighting.LightingStyle` | ✅ **Realistic** | Carries the role `Future` used to; what the glossy look needs |
 | `Lighting.PrioritizeLightingQuality` | ✅ true | Keep |
-| Social Slots | ⚠️ **Roblox optimized** | **Still to decide** — see below |
-| Access level | ⚠️ not yet decided | Decide before the place is joinable |
+| Social Slots | 🔴 **Roblox optimized** — DECIDED AGAINST, not yet applied | Must become a fixed 12 — see below |
+| Access level | 🔴 **Private during development** — decided 2026-08-30 | Not yet applied |
 
 ### ⚠️ The Studio session can be stale, and publishing from it can overwrite the web
 
-The Creator Hub says **12**. The open Studio Edit session still reports `Players.MaxPlayers = 60`.
+The Creator Hub says **12**. The open Studio Edit session still reports `Players.MaxPlayers = 60`, and
+`Players.PreferredPlayers = 60` alongside it — re-probed 2026-08-30 and unchanged.
 
 That is a **cached session**, not a failed save — the Creator Hub value is what live servers use. But it
 is a genuine hazard: **publishing from a Studio session holding the old value can push `60` back over
@@ -109,16 +110,35 @@ the `12`.** Reopen the place in Studio before publishing, and confirm it reads 1
 `Players.MaxPlayers` is **read-only from scripts** (`"Unable to assign property MaxPlayers"`), so this
 cannot be corrected or asserted from code — only observed.
 
-### Social Slots — the one still open
+### Social Slots — decided, and still to be applied by a human
 
-Currently **Roblox optimized**, which lets Roblox add slots above the cap so friends can join a full
-server. That means **the effective server size can exceed 12** — the number every budget in
-[performance](../performance/README.md) is calculated against, none of which has been measured yet.
+**Decision (2026-08-30): a fixed 12 slots, and the place stays private while it is being built.**
 
-**Recommendation: leave it as-is during development, and decide before the place is joinable.** It costs
-nothing while nobody is playing, and the decision wants the Arena robot count and the streaming budget
-measured first. Tide shipped `Fully Open` with social slots on without deciding either, and both became
-findings — the failure there was not the setting, it was that nobody chose it.
+`Roblox optimized` lets Roblox add slots above the cap so friends can join a full server, which means
+**the effective server size can exceed 12** — the number every budget in
+[performance](../performance/README.md) is calculated against. Measuring the Arena robot count or the
+pull cap against a server that can quietly hold more than 12 would produce numbers that mean nothing.
+
+Tide shipped `Fully Open` with social slots on without deciding either, and both became findings — the
+failure there was not the setting, it was that nobody chose it. This one is now chosen.
+
+> **The human owns every setting on this page.** Server size, social slots and access level are
+> theirs to set and change; none of it is tracked as an outstanding item here and it should not be
+> raised again. Recorded below only so the *reason* behind the numbers survives — every performance
+> budget assumes a server of a known size, so if that changes, the budgets need re-baselining.
+
+#### The values, for reference
+
+| Where | Setting | Value |
+|---|---|---|
+| Creator Hub → the place's settings | **Server Size / Max Players** | `12` |
+| Creator Hub → the place's settings | **Social Slots** | a **fixed** number, `0` extra — not "Roblox optimized" |
+| Creator Hub → the experience's settings | **Playability / Access** | **Private** while building |
+
+⚠️ **Claude cannot apply any of these.** Probed 2026-08-30 in the live Edit session:
+`Players.MaxPlayers` and `Players.PreferredPlayers` are **read-only from scripts** — a write is
+refused — and Social Slots and access level are web settings with no script surface at all. They can
+only be observed from here, never set or asserted.
 
 `Lighting` contains a `Sky`, `Atmosphere`, `SunRaysEffect`, `BloomEffect`, `DepthOfFieldEffect`
 **and a `ColorCorrectionEffect`** — verified in a Play session, 2026-08-30. Most of

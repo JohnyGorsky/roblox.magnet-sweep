@@ -96,7 +96,7 @@ Remotes.SPECS = {
 		kind = "Function",
 		dir = "ClientToServer",
 		rate = "Economy",
-		note = "Buy one step of Power/Radius/Drive/Capacity. Server recomputes the cost; never accepts a client-supplied price.",
+		note = "Quote AND buy, on one remote so the price shown is the price charged. Invoke with no track to quote; with a track id ('power'|'radius'|'capacity'|'drive') to buy one step. Replies (ok: boolean, { reason: string, quotes: {Quote} }) and ALWAYS carries a fresh quote table. Server recomputes the cost from the player's own level; never accepts a client-supplied price.",
 	},
 	{
 		name = "StatsChanged",

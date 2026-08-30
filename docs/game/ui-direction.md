@@ -23,6 +23,42 @@ decision, not just taste. If a thing can be a world object instead of a HUD elem
 
 That is the whole persistent HUD. Everything else is contextual.
 
+### Built, and where touch differs — measured, job 011
+
+The table above is what desktop ships. Two of its five positions are unavailable on a phone, and the
+reason is measured rather than aesthetic. On the Device Emulator's phone preset, in Play:
+
+| | |
+|---|---|
+| `Camera.ViewportSize` | 666 × 374 |
+| `GuiService:GetGuiInset()` | (0, **58**) |
+| Usable canvas, `CoreUISafeInsets` | **666 × 316** ← size everything from this |
+| `DynamicThumbstickFrame` | x −100..266 · y 105..416 |
+| `JumpButton` | x 571..641 · y 226..296 |
+
+`TouchGui` rects and a `CoreUISafeInsets` element's `AbsolutePosition` share one coordinate space, so
+they compare directly. (`ScreenInsets = None` does not: its origin sits 58 px higher.)
+
+**The consequence, and it is not obvious.** The free bottom band is x 266..571, and its centre is
+**x ≈ 418 — not the canvas centre, 333**. Anything "centred at the bottom" on a phone is sitting inside
+the movement control.
+
+So:
+
+- **Scrap stays at the bottom on both layouts**, as above. On touch it is centred in the *free band*
+  rather than on the canvas — derived at runtime from Roblox's own live rectangles
+  (`Ui.Layout.freeBottomSpan`), not from the numbers in this table, so the day Roblox moves a control
+  the HUD moves with it. If a device has no usable band it falls back to a top-left vitals column.
+- **The upgrade button moves to the top right on touch.** Bottom-right is the jump button. Top-right
+  is free, clear of both thumbs, and the button is a menu opener rather than a twitch control.
+- **A modal owns the screen.** The upgrade panel sets `UserInputService.ModalEnabled`, which switches
+  Roblox's touch controls off for as long as it is open. There is no position that both fits a panel
+  and clears the controls, so the supported answer is to hide them.
+
+**Not built, and deliberately not faked:** the robot/Arena widget is wired to `ArenaStateChanged` and
+stays hidden, because nothing fires that remote until groups 09/10. It draws no invented HP and no
+placeholder timer (ground rule 10).
+
 ## Rare cargo HUD
 
 Replaces nothing; appears while carrying:
