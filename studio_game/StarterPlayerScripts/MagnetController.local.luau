@@ -30,6 +30,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = ReplicatedStorage:WaitForChild("Config", 20)
 local Magnet = require(Config:WaitForChild("Magnet", 20))
+local Vfx = require(Config:WaitForChild("Vfx", 20))
 local Remotes = require(ReplicatedStorage:WaitForChild("Remotes", 20))
 local Log = require(ReplicatedStorage:WaitForChild("Log", 20)).scope("Magnet")
 
@@ -68,11 +69,11 @@ local function buildMagnet(char: Model)
 	local rig = Instance.new("Model")
 	rig.Name = "MagnetRig"
 
-	local function bar(name: string, size: Vector3, offset: CFrame, hex: string)
+	local function bar(name: string, size: Vector3, offset: CFrame, colour: Color3)
 		local p = Instance.new("Part")
 		p.Name = name
 		p.Size = size
-		p.Color = Color3.fromHex(hex)
+		p.Color = colour
 		p.Material = Enum.Material.SmoothPlastic
 		p.CanCollide = false
 		p.CanQuery = false
@@ -87,9 +88,13 @@ local function buildMagnet(char: Model)
 		return p
 	end
 
-	bar("Core", Vector3.new(1.6, 0.5, 0.5), CFrame.new(0, -1.1, 0), "#B8C2CC")
-	bar("PoleRed", Vector3.new(0.5, 1.3, 0.5), CFrame.new(-0.55, -1.8, 0), "#E03A2F")
-	bar("PoleCyan", Vector3.new(0.5, 1.3, 0.5), CFrame.new(0.55, -1.8, 0), "#41D8FF")
+	-- ⚠️ Vfx.RED / Vfx.CYAN, not hex literals. The particles and both beams already read those
+	-- constants; a second copy here means a magnet SKIN recolours the field and leaves the
+	-- physical poles signal-red, and nothing errors. Config-first decays one constant at a time
+	-- (PITFALLS #38, #52).
+	bar("Core", Vector3.new(1.6, 0.5, 0.5), CFrame.new(0, -1.1, 0), Vfx.CORE)
+	bar("PoleRed", Vector3.new(0.5, 1.3, 0.5), CFrame.new(-0.55, -1.8, 0), Vfx.RED)
+	bar("PoleCyan", Vector3.new(0.5, 1.3, 0.5), CFrame.new(0.55, -1.8, 0), Vfx.CYAN)
 
 	local tip = Instance.new("Part")
 	tip.Name = "Tip"

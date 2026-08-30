@@ -125,8 +125,13 @@ Vfx.TEXTURE = {
 
 --- The magnet's two pole colours. NEVER recoloured outside a purchased skin — this pair is the
 --- logo, the game icon and the Arena Core.
+--- ⚠️ The ONLY definition of these. `MagnetController` builds the physical poles from them
+--- and this file's particles and beams use them too -- they were duplicated as hex literals in
+--- both files until job 010's review, which meant a magnet skin would have recoloured the
+--- field and left the poles signal-red, silently.
 Vfx.RED = Color3.fromHex("#E03A2F")
 Vfx.CYAN = Color3.fromHex("#41D8FF")
+Vfx.CORE = Color3.fromHex("#B8C2CC") -- the brushed-steel body between the poles
 
 function Vfx.get(name: StateName): State
 	return Vfx.STATES[name] or Vfx.STATES.Idle
@@ -147,15 +152,26 @@ function Vfx.classify(opts: { overcharge: boolean?, rush: boolean?, flowTier: nu
 	return "Idle"
 end
 
---- Every field of `State`, so a startup audit can prove each one is consumed. A field in a
---- config table that nothing reads is a lie in a table -- job 009 found three of them in
---- Config/Quality (`depthOfField` was worse: read, then overwritten with the opposite value).
+--- Every field of `State`.
+---
+--- ⚠️ This list does NOT prove a field is consumed, and an earlier version of this comment
+--- claimed it did. Both checks below read only the literal tables in this file, so deleting a
+--- field here and from all five states passes clean whether or not anything read it. Proving
+--- consumption needs a grep across `studio_game/`, not a table walking itself. Stated plainly
+--- because "a field nothing reads is a lie in a table" was the reason given for writing this,
+--- and the audit did not do it.
 Vfx.FIELDS = {
 	"rate", "speed", "size", "lifetime",
 	"beamWidth", "beamTransparency",
 	"lightRange", "lightBrightness",
 	"soundVolume",
 }
+
+--- Fields that must grow from Idle to Overcharge, and the one that must SHRINK. "Maximum
+--- visual state" is a claim about all of them, not about the particle rate alone: checking
+--- only `rate` let Overcharge pass with a dimmer light than Idle and fully invisible beams.
+Vfx.MUST_RISE = { "rate", "speed", "size", "lightRange", "lightBrightness", "soundVolume" }
+Vfx.MUST_FALL = { "beamTransparency" } -- 1 = invisible, so a stronger state is a LOWER number
 
 --- Fails when a state is missing a field, or carries one that is not in FIELDS.
 function Vfx.audit(): { string }
@@ -177,12 +193,27 @@ function Vfx.audit(): { string }
 			end
 		end
 	end
-	-- the states must actually escalate, or "maximum visual state" is a label
+	-- The states must actually escalate, or "maximum visual state" is a label. Every field is
+	-- checked in its own direction; `beamWidth` and `lifetime` are deliberately unconstrained
+	-- so a state can be tuned without tripping this.
 	for i = 2, #Vfx.ORDER do
 		local prev, cur = Vfx.STATES[Vfx.ORDER[i - 1]], Vfx.STATES[Vfx.ORDER[i]]
-		if prev and cur and cur.rate <= prev.rate then
-			table.insert(problems, ("%s does not escalate over %s (rate %d vs %d)")
-				:format(Vfx.ORDER[i], Vfx.ORDER[i - 1], cur.rate, prev.rate))
+		if not (prev and cur) then
+			continue
+		end
+		for _, field in ipairs(Vfx.MUST_RISE) do
+			local a, b = (prev :: any)[field], (cur :: any)[field]
+			if type(a) == "number" and type(b) == "number" and b < a then
+				table.insert(problems, ("%s.%s (%.2f) is WEAKER than %s (%.2f)")
+					:format(Vfx.ORDER[i], field, b, Vfx.ORDER[i - 1], a))
+			end
+		end
+		for _, field in ipairs(Vfx.MUST_FALL) do
+			local a, b = (prev :: any)[field], (cur :: any)[field]
+			if type(a) == "number" and type(b) == "number" and b > a then
+				table.insert(problems, ("%s.%s (%.2f) is MORE transparent than %s (%.2f)")
+					:format(Vfx.ORDER[i], field, b, Vfx.ORDER[i - 1], a))
+			end
 		end
 	end
 	return problems

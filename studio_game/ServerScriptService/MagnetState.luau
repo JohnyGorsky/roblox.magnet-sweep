@@ -48,6 +48,10 @@ type Entry = {
 	lastPickup: number, -- os.clock(); decay starts DECAY_AFTER seconds later
 	rushUntil: number, -- os.clock() while MAGNET RUSH is running
 	overchargeUntil: number, -- os.clock() while a purchased Overcharge is running
+	--- Whether the client has been told each state is ON. The tick pushes once when the
+	--- deadline lapses; without these it would either push every frame or never.
+	rushSent: boolean,
+	overchargeSent: boolean,
 	cargo: Magnet.WeightClass?, -- a rare part in hand slows the run home
 }
 
@@ -73,6 +77,8 @@ local function blank(): Entry
 		lastPickup = 0,
 		rushUntil = 0,
 		overchargeUntil = 0,
+		rushSent = false,
+		overchargeSent = false,
 		cargo = nil,
 	}
 end
@@ -131,15 +137,21 @@ end
 
 --- Grant an Overcharge for `seconds`.
 ---
---- ⚠️ DECISION 0011 IS A CODE GATE, NOT A PROMISE. Robux never buys Arena power, so this
---- must never reach a deployed robot. It is enforced structurally rather than by remembering:
---- Overcharge lives on the PLAYER's magnet state and the only things that read it are the
---- magnet's own radius and its VFX. The Arena reads robot stats, which are a different module
---- and never consult this. If a future job makes a robot ask MagnetState anything, that is the
---- moment this gate breaks -- and the assertion below is what should catch it.
+--- ⚠️ DECISION 0011: Robux never buys Arena power, so an Overcharge must never reach a
+--- deployed robot.
+---
+--- That is enforced by `tools/check-overcharge-gate.py`, which fails if any module outside a
+--- named allow-list references `MagnetState`. It is a GREP, not a runtime assertion, because
+--- the thing being forbidden is a call site that does not exist yet -- there is no robot or
+--- Arena module in `studio_game/` at all today, so nothing at runtime could observe the
+--- violation.
+---
+--- An earlier version of this comment claimed "the assertion below is what should catch it"
+--- and there was no assertion, here or anywhere. A comment asserting a gate is not a gate.
 function MagnetState.grantOvercharge(player: Player, seconds: number)
 	local e = entryFor(player)
 	e.overchargeUntil = math.max(e.overchargeUntil, os.clock() + math.max(0, seconds))
+	e.overchargeSent = true
 	MagnetState.push(player)
 	Log.info("%s overcharged for %.0fs (PvE magnet only -- decision 0011)", player.Name, seconds)
 end
@@ -211,6 +223,7 @@ function MagnetState.collect(player: Player, value: number, count: number): (num
 		e.flow = math.min(FLOW_CEILING, e.flow + count)
 		if e.flow >= FLOW_CEILING then
 			e.rushUntil = os.clock() + Magnet.RUSH.DURATION
+			e.rushSent = true
 			e.flow = 0
 			started = true
 			Log.info("%s hit MAGNET RUSH for %.1fs", player.Name, Magnet.RUSH.DURATION)
@@ -304,6 +317,29 @@ end
 local function decayTick(dt: number)
 	local now = os.clock()
 	for player, e in pairs(state) do
+		-- ⚠️ EXPIRY MUST BE PUSHED. `inRush` and `inOvercharge` are predicates over a deadline,
+		-- so the SERVER is always right about them -- but the client only ever learns their
+		-- value from a push, and every other push site fires on an ACTION (a collection, a
+		-- recycle, an upgrade). A Rush that simply runs out is not an action, so nothing told
+		-- the client and its copy latched ON.
+		--
+		-- Measured before this existed: the server left the Rush at T+8.2s and the client held
+		-- `rate = 120`, `lightRange = 20`, shadow-casting, for as long as it was watched. Two
+		-- things broke at once -- the continuous-cost budget the whole VFX design is built
+		-- around was abandoned for the entire walk home, and "MAGNET RUSH" stopped meaning a
+		-- Rush was happening. For the PAID Overcharge it is worse: the only feedback the
+		-- product gives says you still own a boost that has expired.
+		--
+		-- It is cheap because it fires ONCE, on the edge.
+		if e.rushSent and not MagnetState.inRush(player) then
+			e.rushSent = false
+			MagnetState.push(player)
+		end
+		if e.overchargeSent and not MagnetState.inOvercharge(player) then
+			e.overchargeSent = false
+			MagnetState.push(player)
+		end
+
 		if e.flow <= 0 then
 			continue
 		end

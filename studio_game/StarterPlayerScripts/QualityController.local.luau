@@ -138,10 +138,19 @@ end
 
 local baseRate: { [ParticleEmitter]: number } = weak()
 
+--- ⚠️ `SelfDriven` is the exemption `applyLights` has as `Hero` and this never had. An
+--- emitter whose Rate is written every frame by its owner cannot be scaled by a one-shot pass:
+--- the write here is undone within 16ms and `baseRate` captures the value only once, so it
+--- never self-corrects. The magnet field is exactly that emitter -- and because Medium and
+--- High both scale by 1.0, the conflict is invisible everywhere except the LOW tier, which is
+--- the phone, which is the entire point of decision 0012.
+---
+--- A self-driven emitter reads `Quality.tierOf(player)` and applies the scale itself.
+--- PITFALLS #53 is this exact shape and it had already been found four times in job 009.
 local function applyParticles(tier: Quality.Tier): number
 	local n = 0
 	for _, d in ipairs(workspace:GetDescendants()) do
-		if d:IsA("ParticleEmitter") then
+		if d:IsA("ParticleEmitter") and d:GetAttribute("SelfDriven") ~= true then
 			if baseRate[d] == nil then
 				baseRate[d] = d.Rate
 			end
@@ -166,6 +175,8 @@ local function apply(tierName: Quality.TierName)
 	local refreshed = MaterialKit.refresh(workspace)
 
 	current = tierName
+	-- published so a SelfDriven emitter can apply the tier itself; see applyParticles
+	player:SetAttribute("QualityTier", tierName)
 	postState = auditPostChain()
 
 	-- ⚠️ Tell the SERVER. The pull cap is a per-device budget (decision 0012), but the cap is

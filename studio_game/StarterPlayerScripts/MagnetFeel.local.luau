@@ -29,6 +29,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = ReplicatedStorage:WaitForChild("Config", 20)
 local Vfx = require(Config:WaitForChild("Vfx", 20))
 local Magnet = require(Config:WaitForChild("Magnet", 20))
+local Quality = require(Config:WaitForChild("Quality", 20))
 local SoundKit = require(ReplicatedStorage:WaitForChild("SoundKit", 20))
 local Remotes = require(ReplicatedStorage:WaitForChild("Remotes", 20))
 local Log = require(ReplicatedStorage:WaitForChild("Log", 20)).scope("Feel")
@@ -95,6 +96,10 @@ local function buildRig(tip: BasePart): Rig
 	emitter.LightEmission = 0.85
 	emitter.LightInfluence = 0
 	emitter.Rate = idle.rate
+	-- ⚠️ We write Rate every frame, so the quality controller's one-shot particle pass must
+	-- not also write it -- it loses the race and its scaling silently does nothing. This marks
+	-- the emitter as self-driven; the tier scale is applied below instead.
+	emitter:SetAttribute("SelfDriven", true)
 	emitter.Speed = NumberRange.new(idle.speed)
 	emitter.Size = NumberSequence.new(idle.size)
 	emitter.Lifetime = NumberRange.new(idle.lifetime)
@@ -148,6 +153,12 @@ end
 -- State.
 --------------------------------------------------------------------------------
 
+--- Below this, a blended value is snapped to its target so `render` can stop writing entirely.
+local CONVERGED = 1e-3
+
+--- The particle scale last written, so a tier change re-dirties the render loop.
+local lastScale = -1
+
 local currentName: Vfx.StateName = "Idle"
 local blend = { rate = 0, speed = 0, size = 0, lifetime = 0, beamWidth = 0, beamTransparency = 0, lightRange = 0, lightBrightness = 0 }
 
@@ -179,13 +190,17 @@ task.spawn(function()
 	end
 end)
 
+--- ⚠️ Reused, not rebuilt. `Vfx.classify` takes a table and this is called once per frame;
+--- a fresh literal here is a hash allocation every frame, forever, for four fields that are
+--- overwritten immediately.
+local classifyArgs = { overcharge = false, rush = false, flowTier = 0, pulling = 0 }
+
 local function stateNow(): Vfx.StateName
-	return Vfx.classify({
-		overcharge = inOvercharge,
-		rush = inRush,
-		flowTier = flowTier,
-		pulling = pulls,
-	})
+	classifyArgs.overcharge = inOvercharge
+	classifyArgs.rush = inRush
+	classifyArgs.flowTier = flowTier
+	classifyArgs.pulling = pulls
+	return Vfx.classify(classifyArgs)
 end
 
 local function render(dt: number)
@@ -203,18 +218,46 @@ local function render(dt: number)
 	-- exponential approach, framerate-independent. Snapping between rates reads as a bug; a
 	-- Rush has to ARRIVE rather than cut.
 	local a = 1 - math.exp(-dt / math.max(1e-3, Vfx.BLEND_SECONDS))
+	local moved = false
 	for key, value in pairs(blend) do
-		blend[key] = value + ((target :: any)[key] - value) * a
+		local goal = (target :: any)[key]
+		local next = value + (goal - value) * a
+		if math.abs(next - goal) < CONVERGED then
+			next = goal -- land exactly, so the loop below can stop for good
+		end
+		if next ~= value then
+			blend[key] = next
+			moved = true
+		end
 	end
 
-	r.emitter.Rate = blend.rate
+	-- ⚠️ NOTHING BELOW RUNS WHEN THE BLEND HAS CONVERGED. This is the effect the whole
+	-- design calls "the one that must be cheapest": it runs every frame, on every client, for
+	-- the whole session, and Idle is 95% of that. Without this guard a player standing still
+	-- paid six heap allocations and eight property writes per frame -- NumberRange and
+	-- NumberSequence are immutable datatypes, so every assignment allocates -- roughly 1.3
+	-- million allocations an hour to re-set values that had stopped changing.
+	--
+	-- ⚠️ ...but the QUALITY TIER is an input too, and it changes without moving the blend.
+	-- The first version of this guard checked `moved` alone, so switching to Low while the
+	-- magnet sat converged left the old rate in place forever: measured 199.8 where the tier
+	-- called for 100.0. A cheap loop that ignores one of its inputs is just a wrong loop.
+	local scale = Quality.get(Quality.tierOf(player)).particleRateScale
+	if not moved and scale == lastScale then
+		return
+	end
+	lastScale = scale
+
+	r.emitter.Rate = blend.rate * scale
 	r.emitter.Speed = NumberRange.new(blend.speed)
 	r.emitter.Size = NumberSequence.new(blend.size)
 	r.emitter.Lifetime = NumberRange.new(blend.lifetime)
 	r.beamRed.Width0, r.beamRed.Width1 = blend.beamWidth, blend.beamWidth
 	r.beamCyan.Width0, r.beamCyan.Width1 = blend.beamWidth, blend.beamWidth
-	r.beamRed.Transparency = NumberSequence.new(blend.beamTransparency)
-	r.beamCyan.Transparency = NumberSequence.new(blend.beamTransparency)
+	-- both beams share one value, so build the sequence once rather than twice
+	local beamAlpha = NumberSequence.new(blend.beamTransparency)
+	r.beamRed.Transparency = beamAlpha
+	r.beamCyan.Transparency = beamAlpha
 	r.light.Range = blend.lightRange
 	r.light.Brightness = blend.lightBrightness
 end
@@ -230,15 +273,29 @@ local VOICES_PER_FAMILY = 4
 local voices: { [string]: { Sound } } = {}
 local nextVoice: { [string]: number } = {}
 
+local function magnetTip(): BasePart?
+	local r = rig
+	return r and r.emitter.Parent and (r.emitter.Parent :: Attachment).Parent :: BasePart? or nil
+end
+
+--- ⚠️ Voices are parented to the MAGNET TIP, not to a Folder. A `Sound` under a Folder is
+--- 2D: it plays at full volume in every listener's ears and ignores `RollOffMode` and
+--- `RollOffMaxDistance` entirely -- so the code reads as spatial while being global. Parented
+--- to the tip they play where the collection actually happens, which is also where the object
+--- arrives, so this is both cheaper and more correct than positioning them per pickup.
 local function voiceFor(family: string): Sound?
+	local host = magnetTip()
+	if not host then
+		return nil -- no magnet yet: nothing to attach a voice to
+	end
 	local ring = voices[family]
-	if not ring then
+	if not ring or (ring[1] and ring[1].Parent ~= host) then
+		-- the character respawned and took the old tip with it; rebuild on the new one
+		ring = {}
 		local slot = SoundKit.family(family)
 		if not slot or slot.id == "" then
 			return nil -- empty slot: silent ON PURPOSE, and reported at startup
 		end
-		ring = {}
-		local host = workspace:FindFirstChild("Scrap") or workspace
 		for i = 1, VOICES_PER_FAMILY do
 			local s = SoundKit.build(slot, host, ("Voice_%s_%d"):format(family, i))
 			if s then
@@ -256,7 +313,7 @@ local function voiceFor(family: string): Sound?
 	return ring[i]
 end
 
-local function playCollection(family: string?, at: Vector3)
+local function playCollection(family: string?)
 	local slot = SoundKit.family(family)
 	if not slot then
 		return
@@ -278,27 +335,51 @@ local function watchScrap()
 	if not folder then
 		return
 	end
-	local seen: { [BasePart]: string } = {}
+	-- ⚠️ Weak keys, and every connection is disconnected on ChildRemoved. StreamingEnabled is
+	-- ON and the pool parks 300 studs under the map, so pooled parts are removed and re-added
+	-- as NEW client Instances every time they cycle in and out of play. Without this, each
+	-- cycle leaked a connection and a strong reference to a destroyed part, without bound.
+	-- MagnetController does this correctly 130 lines away; this script did not.
+	local seen: { [BasePart]: string } = setmetatable({}, { __mode = "k" }) :: any
+	local mine: { [BasePart]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+	local conns: { [Instance]: RBXScriptConnection } = {}
+
 	local function track(part: Instance)
-		if not part:IsA("BasePart") then
+		if not part:IsA("BasePart") or conns[part] then
 			return
 		end
-		part:GetAttributeChangedSignal(ATTR_STATE):Connect(function()
+		conns[part] = part:GetAttributeChangedSignal(ATTR_STATE):Connect(function()
 			local state = part:GetAttribute(ATTR_STATE)
 			local was = seen[part]
 			seen[part] = tostring(state)
-			if state == "REACT" and was ~= "REACT" then
-				-- one rattle per object entering the field, not one per frame
+			if state == "PULL" then
+				-- ⚠️ Remember WHOSE pull this was, now -- `release` clears PullOwner in the same
+				-- frame it clears ScrapState, so by the time the collection fires there is no
+				-- owner left to check. Without this every client hears every other player's
+				-- pickups: the state change replicates to everyone.
+				mine[part] = part:GetAttribute("PullOwner") == player.UserId
 			elseif state == nil and was == "PULL" then
-				-- PULL -> pooled: the object was collected
-				playCollection(part:GetAttribute(ATTR_SOUND) :: any, part.Position)
+				if mine[part] then
+					playCollection(part:GetAttribute(ATTR_SOUND) :: any)
+				end
+				mine[part] = nil
 			end
 		end)
 	end
+
+	local function untrack(part: Instance)
+		local c = conns[part]
+		if c then
+			c:Disconnect()
+			conns[part] = nil
+		end
+	end
+
 	for _, c in ipairs(folder:GetChildren()) do
 		track(c)
 	end
 	folder.ChildAdded:Connect(track)
+	folder.ChildRemoved:Connect(untrack)
 end
 
 --------------------------------------------------------------------------------

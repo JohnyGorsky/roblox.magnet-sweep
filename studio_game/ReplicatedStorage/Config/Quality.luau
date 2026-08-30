@@ -129,6 +129,17 @@ Quality.BUDGET = {
 	SEE = "Config/Perf",
 }
 
+--- The tier a player is actually on, as published by their QualityController, or the default
+--- before it has run. Anything that drives its own visuals per frame must consult this rather
+--- than let the one-shot tier pass fight it.
+function Quality.tierOf(player: Player): TierName
+	local name = player:GetAttribute("QualityTier")
+	if type(name) == "string" and Quality.TIERS[name] then
+		return name :: TierName
+	end
+	return Quality.default()
+end
+
 function Quality.default(): TierName
 	return "Medium"
 end

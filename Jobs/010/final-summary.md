@@ -107,10 +107,98 @@ What the search pass established, which is the part worth keeping:
 - `MAGNET.React` and `MAGNET.Refuse` have slots and a `watchScrap` hook but no trigger wired to
   the REACT transition yet — the families were the priority. Small follow-up.
 
+## The independent review, and what it found
+
+Run after the build, given the requirement and never my theory. It returned four CRITICALs and
+ten MAJORs. The headline one I reproduced in Play before touching anything:
+
+**The Rush and Overcharge VFX states latched ON and never turned off.** `inRush` / `inOvercharge`
+are predicates over a deadline, so the server is always right about them — but the client only
+learns their value from a push, and every push site fires on an **action** (a collection, a
+recycle, an upgrade). A Rush that simply runs out is not an action. Measured: the server left
+the Rush at T+8.2s and the client held `rate = 120`, `lightRange = 20`, shadow-casting, for as
+long as it was watched.
+
+Two things broke at once. The continuous-cost budget this whole design is built around was
+abandoned for the entire walk home after *every* Rush, and "MAGNET RUSH" stopped meaning a Rush
+was happening. For the **paid** Overcharge it is worse: the only feedback the product gives said
+you still owned a boost that had expired. Fixed by pushing once on the edge, in the tick that
+was already running. After: the client drops out at 8.1s with the server.
+
+**Decision 0011 was not code-gated — the comment pointed at an assertion that did not exist.** I
+wrote "the assertion below is what should catch it", and there was no assertion, there or
+anywhere. The final summary repeated the claim. Now enforced by
+[`tools/check-overcharge-gate.py`](../../tools/check-overcharge-gate.py): only named modules may
+reference `MagnetState`, and any file whose name matches arena/robot/combat/damage/deploy may
+never. It is a grep rather than a runtime check because the thing being forbidden is a call site
+that does not exist yet — proven both ways: clean on the repo, and it fails on a probe
+`ArenaCombat.luau` that asks `MagnetState.inOvercharge`.
+
+**The Low tier's `particleRateScale` was dead for the magnet field.** `applyParticles` scaled the
+emitter; the render loop overwrote `Rate` one frame later. Because Medium and High both scale by
+1.0, the conflict was invisible everywhere except **Low — which is the phone, which is the entire
+point of decision 0012**. This is PITFALLS #53 reintroduced three jobs after job 009 found four
+instances of it. Fixed with a `SelfDriven` exemption (the mechanism `applyLights` had as `Hero`
+and this never had) plus the emitter applying the tier scale itself.
+
+**The render loop allocated six datatypes per frame, forever.** `NumberRange`/`NumberSequence`
+are immutable, so every assignment allocates — roughly 1.3 million allocations an hour to re-set
+values that had stopped changing, on the effect whose own header says it "must be cheapest".
+Fixed by snapping to target and returning early. Measured after: **0 of 75 frames** write.
+
+### A bug I introduced fixing that one
+
+The first converged-guard checked "did the blend move?" alone — but the **quality tier is an
+input too**, and it changes without moving the blend. Switching to Low while the magnet sat
+converged left the old rate in place: measured 199.8 where the tier called for 100.0. A cheap
+loop that ignores one of its inputs is just a wrong loop. Caught by re-running the C3 test rather
+than assuming the fix worked.
+
+### Also fixed
+
+- **The collection sound was 2D and global.** Voices were parented to a *Folder*, which ignores
+  `RollOffMode` entirely — so the code read as spatial and was not — and `watchScrap` had no
+  owner filter, so on a 12-player server every client heard every other player's pickups at full
+  volume with no positional cue. Voices now live on the magnet tip, and ownership is recorded
+  when the pull *starts*, because `release` clears `PullOwner` in the same frame it clears
+  `ScrapState`.
+- **`watchScrap` leaked a connection and a strong Instance key per streaming cycle.**
+  `StreamingEnabled` is on and the pool parks 300 studs under the map, so pooled parts are
+  removed and re-added as new client Instances constantly. `MagnetController` does this correctly
+  130 lines away; this script did not.
+- **`Vfx.audit` checked only `rate`** while the summary claimed it checked escalation. Overcharge
+  could pass with a dimmer light than Idle and fully invisible beams. Now every field is checked
+  in its own direction — including `beamTransparency`, which must *fall*. Verified against the
+  reviewer's exact counterexample: both violations caught.
+- **The pole colours were hex literals in two files** while `Vfx` declared itself their source of
+  truth — a magnet skin would have recoloured the field and left the poles signal-red.
+- `Vfx.FIELDS` claimed to "prove each field is consumed". It cannot: both checks read literal
+  tables in the same file. The comment now says so.
+
+## Carried forward from the review
+
+- `MAGNET.Rush` and `MAGNET.Full` have no caller (the summary previously disclosed only React and
+  Refuse). Both already have a signal waiting: Bootstrap fires a dedicated Rush message, and
+  `StatsChanged` carries `full`.
+- REFUSE never re-evaluates when you upgrade Power — the object keeps shaking "too heavy"
+  immediately after the purchase that fixed it. Job 007/008 code, in job 010's blast radius.
+- `SoundKit.missing()` cannot report a `ScrapSpec` sound family with no matching slot.
+- Four of the nine families (`Barrel`, `Vehicle`, `Machine`, `Rare`) are referenced by no scrap
+  def yet, so the asset request asks for four assets no code path can play.
+- `FAMILY.Rare` needs two assets and `Slot` holds one id.
+- **Unsettled and worth a Play session:** whether the `PULL → nil` attribute transition survives
+  streaming, given `release` teleports the part 300 studs down in the same frame. If unstreaming
+  wins that race the collection signal is unreliable and the whole nine-family system would be
+  mute even after the ids land — and it would look exactly like "the sound ids are wrong".
+
+## Regression
+
+244 asked, **244 granted**, 0.0% turned away, unanchored 0, destroyed 0, parts 400/400.
+
 ## Checklist
 
 - [x] Requirements reviewed
-- [ ] **Independent reviewer agent run** — not yet run for this job
+- [x] **Independent reviewer agent run** — findings above, acted on
 - [x] Symptom / behaviour reproduced in Play
 - [x] Implementation completed
 - [x] Proof it works captured — the state table above, measured on the live rig
