@@ -22,6 +22,7 @@ new record that says so and link it from here.
 | [0015](0015-rarity-is-re-graded.md) | Rarity is re-graded | The spec made `Rare` the most common grade in the game |
 | [0016](0016-low-tier-drops-the-variant.md) | The Low tier drops the MaterialVariant | Reflectance is inert on `Metal`, so it is not a fallback. Amends 0012 |
 | [0017](0017-the-kit-is-generated-from-a-spec.md) | The kit is generated from a spec, on a 4-stud grid | `Workspace` does not sync, so a hand-built kit could never be in git |
+| [0018](0018-full-stops-the-pull-not-the-grant.md) | SCRAP FULL stops the pull; Flow does not build during a Rush | Refusing at the grant instead spun the claim loop at 93% rejection, and a charging Rush never ends |
 
 ## Answered by the user, 2026-08-29
 
@@ -54,3 +55,6 @@ Each of these is violated by writing the *convenient* code, not by making a deci
   and the cap silently stops meaning anything.
 - **[0003](0003-forward-is-the-only-direction.md)** — one hardcoded path into another zone and
   streaming turns it into a nil-index crash.
+- **[0018](0018-full-stops-the-pull-not-the-grant.md)** — refusing a full magnet at the *grant* is the
+  obvious implementation and it is wrong twice: it reads as a broken magnet, and it fires a remote four
+  times a second that can never succeed.

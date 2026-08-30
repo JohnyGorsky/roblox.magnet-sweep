@@ -15,6 +15,32 @@ first, and what it needs from a human.
 
 ---
 
+## ⚠️ THIS IS THE PLAN, NOT THE RECORD — and the two have diverged
+
+Numbers below are **planned** job numbers. From 006 on they no longer match the jobs that were
+actually run, because planned 006 (lighting) and 007 (quality tiers) were done together as one job.
+Every "Needs first" reference from here down is therefore off by one. **`Jobs/` is the record; this
+page is the intent.**
+
+| Planned | Actually run as | Note |
+|---|---|---|
+| 002–005 | 002–005 | unchanged |
+| 006 Lighting + 007 Quality tiers | **006** | merged into one job |
+| 008 Magnet core | **007** | |
+| — | **008** | Flow, MAGNET RUSH, Capacity, Magnetic Drive — the rest of group 04's logic, which the plan folded into "magnet core" and which was too big for one job |
+| — | **009** | quality tiers **repaired**: an independent review found three of the four things a tier changes did nothing |
+| — | **010** | magnet VFX states + the sound system |
+
+Two lessons the plan did not anticipate, both worth carrying into the remaining rows:
+
+- **Group 04 was three jobs, not one.** The plan's single "Magnet core" row became 007, 008 and 010,
+  and the sizing rule above is exactly why — it *did* start feeling like several things.
+- **A job can need re-opening long after it is closed.** Job 006 was reported complete and reviewed
+  three jobs later; the review is what found that the tiers were nearly inert. Budget for the review,
+  not just the build.
+
+---
+
 ## Phase A — nothing else can start (jobs 002-003)
 
 | # | Job | Delivers | Needs first | Needs you |

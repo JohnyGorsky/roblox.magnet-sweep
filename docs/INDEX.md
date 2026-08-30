@@ -50,9 +50,15 @@ homemade robot, and release that robot into a persistent Arena. Mobile-first. **
 - [Cosmetics](content/cosmetics.md) — the revenue backbone
 - [Endgame](content/endgame.md) — The Foundry Heart, the Endless Line, Overclock, six goals
 
+## Checkers and generators
+
+**[tools/README.md](../tools/README.md)** — six scripts. Three generate files that must never be
+hand-edited; three check things that drift silently. Run the generators, then the checkers, before
+calling a job done.
+
 ## Accepted decisions
 
-**[decisions/INDEX.md](decisions/INDEX.md)** — 17 records. Never silently overturn one.
+**[decisions/INDEX.md](decisions/INDEX.md)** — 18 records. Never silently overturn one.
 
 Sixteen open questions were answered on 2026-08-29; two became records
 ([0014](decisions/0014-the-owning-guardian-chases.md) the steal-an-egg extraction rule,
@@ -68,7 +74,7 @@ making a decision: [0004](decisions/0004-parts-are-content-rig-is-the-engine.md)
 
 - **[The job ladder](build/job-order.md)** — **the work order.** 28 job-sized slices to the MVP gate,
   in dependency order, with what each needs from you
-- [The manifest](build/README.md) — 14 groups, **581 items**, organised by system. The MVP (groups
+- [The manifest](build/README.md) — 14 groups, **582 items**, organised by system. The MVP (groups
   01-12) is **358** of them; groups 13-14 are post-gate. `P0` means *required within its group*,
   **not** *in the MVP*
 - [Spec coverage](build/spec-coverage.md) — all **87** sections mapped, plus 6 deliberate divergences

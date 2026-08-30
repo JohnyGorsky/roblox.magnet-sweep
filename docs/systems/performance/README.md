@@ -61,9 +61,33 @@ sentence.
 | Concurrent Arena robots, with parts, actuators and VFX | 6 robots cannot hold 33 ms; then the number drops to whatever does | committing to 6 |
 | Workshop + Arena + two loaded zones | client memory exceeds the mobile budget, **or** frame time > 33 ms while standing in the Workshop looking at the Arena | the second zone ships |
 | HUD vs the real safe area and Roblox's reserved touch regions | any interactive element overlaps the thumbstick or jump-button rect, or falls outside the safe-area canvas, in the Device Emulator | the first HUD element ships |
-| Draw calls in the Workshop with full signage and PBR | the count rises above the budget set when the kit is signed off — **that budget does not exist yet and must be set first** | the Workshop is signed off |
+| Draw calls in the Workshop with full signage and PBR | the count rises above the draw-call budget — **which still does not exist and must be set first**; `MAX_PARTS_IN_VIEW` is a proxy, not it | the Workshop is signed off |
 
 Each row states what failure looks like, so the check can actually fail
-([PITFALLS #2](../../PITFALLS.md#2-a-verification-that-could-not-fail)). The reference device and the
-memory and draw-call budgets are **not yet chosen** — choosing them is the first item of this list, not
-an implied prerequisite.
+([PITFALLS #2](../../PITFALLS.md#2-a-verification-that-could-not-fail)).
+
+## What has since been chosen — and what has not
+
+Job 006 put the reference device and the budgets in
+[`Config/Perf`](../../../studio_game/ReplicatedStorage/Config/Perf.luau), which is now their single
+source of truth. This page describes the *checks*; `Config/Perf` holds the *numbers*, labelled TARGET,
+MEASURED or DEVICE so nobody can mistake a design decision for a measurement.
+
+| | State |
+|---|---|
+| Reference device | ✅ chosen — mid-range Android ~2021, 30fps / 33.3 ms |
+| Frame-time budget | ✅ `FRAME_MS = 33.3` — but see the caveat below |
+| Client memory budget | ✅ `CLIENT_MEMORY_MB = 700`, `TEXTURE_MEMORY_MB = 180` |
+| **Draw-call budget** | ❌ **still does not exist.** `MAX_PARTS_IN_VIEW = 1800` is labelled a *proxy* for it, and a proxy is not the budget the row above asks for |
+
+Two things that are still wrong and are tracked, not hidden:
+
+- ⚠️ **One `FRAME_MS` for three quality tiers.** The game ships Low / Medium / High and they cost
+  different amounts, so "does the reference device hold 33.3 ms?" has three answers and the budget
+  records one. Every DEVICE question in `Perf.REGISTER` inherits the same hole — *"how many
+  simultaneously pulled objects hold 33 ms?"* is unanswerable as written, because the cap is 40 / 80 /
+  160 per tier and the question is tier-free.
+- ⚠️ **Nothing measures the CLIENT.** `Perf.sample()` can read exactly these numbers, but its only
+  caller is the `perf.sample` dev command, and DevTools handlers run on the **server** — so its memory
+  figures describe the wrong process. In Studio Play Solo the two are the same process, which hides the
+  mistake precisely where a developer would look. Tracked as `findings/0001`.

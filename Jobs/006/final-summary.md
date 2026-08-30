@@ -82,7 +82,8 @@ Chrome correctly stays empty throughout — it has no variant by design (decisio
 The identical mistake took down seven files in job 003, was fixed, and was written up. Then I did it
 again three jobs later.
 
-Now [PITFALLS #48](../../docs/PITFALLS.md), with a grep that catches it before running:
+Now [PITFALLS #47](../../docs/PITFALLS.md#47-a-type-annotation-on-a-table-field-is-a-syntax-error-and-it-looks-fine),
+with a grep that catches it before running:
 
 ```
 grep -rn "^[A-Za-z_][A-Za-z0-9_.]*\.[A-Za-z0-9_]*\s*:\s*[^=]*=\s*{" studio_game --include=*.luau

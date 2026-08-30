@@ -1,23 +1,28 @@
 # Handoff — where we left off
 
-**Snapshot: 2026-08-29.** Read this, then [PITFALLS.md](PITFALLS.md), then
+**Snapshot: 2026-08-30.** Read this, then [PITFALLS.md](PITFALLS.md), then
 [build/README.md](build/README.md).
 
 ## 🧲 Where the game actually is
 
-**There is no game yet.** No place, no code, no assets. This snapshot is honest about that so nothing
-here reads as progress it is not.
+**The magnet works.** You can stand in a field of scrap, watch it shake, lift and fly in, build a
+combo, trigger a MAGNET RUSH, fill up and go recycle. That is build group 04 — the group the roadmap
+calls **the gate**.
 
 | | State |
 |---|---|
 | **Design** | ✅ Complete. The 87-section spec redistributed into `docs/`, with a coverage table |
-| **Task list** | ✅ Complete. 14 groups, 581 items, sequenced into 28 jobs |
+| **Task list** | ✅ Complete. 14 groups, 582 items, sequenced into jobs |
 | **Place** | ✅ Live. `111667188608192`, universe `10764307230`. `StreamingEnabled` on, `MaxPlayers` 12, `LightingStyle` Realistic |
 | **Sync** | ✅ Connected and **VERIFIED** — flat layout, 6 synced service folders (job 002) |
-| **Code** | ✅ 16 modules. Config, remotes, rate limiting, logging, dev tools, materials, kit |
-| **Assets** | ✅ 32 PBR maps for 8 `MaterialVariant`s, logged in two registries |
+| **Code** | ✅ 25 modules — 15 ReplicatedStorage, 6 ServerScriptService, 4 StarterPlayerScripts |
+| **Assets** | ✅ 32 PBR maps for 8 `MaterialVariant`s. ❌ **14 sound slots empty** — see below |
 | **Kit** | ✅ 24 pieces / 83 parts, generated from spec, tiling verified by assembled corridor |
-| **Gameplay** | ❌ **None yet.** Nothing is playable. The magnet does not exist |
+| **Gameplay** | ✅ **The magnet.** Four-state scrap, pooled + capped, batched server grant, Flow → RUSH, Capacity → SCRAP FULL, Magnetic Drive, five VFX states |
+| **Sound** | ❌ **Silent by design.** Every slot empty and announced at startup — a wrong sound is harder to notice than a missing one |
+
+**What is NOT built:** the Workshop, the HUD, zones 1–2, rare cargo and extraction, guardians, the
+robot, the Arena, persistence, the Factory Refresh. Groups 05–12.
 
 ## ✅ Jobs completed
 
@@ -28,9 +33,16 @@ here reads as progress it is not.
 | **003** | Config skeleton, remotes, rate limiter, dev tools | 6 config modules, 20 remotes, structural rate limiting, dev console. Reviewer caught an economy curve that made **zone 12 unreachable** (4.3×10⁵⁸ coins) |
 | **004** | Material kit | 8 `MaterialVariant`s + built-in Metal for Chrome; `MaterialKit`; lighting recipe applied. Reviewer caught that a claim I published — "Reflectance is inert" — was **wrong**; it is material-dependent |
 | **005** | Industrial kit geometry | 24 pieces / 83 parts generated from `KitSpec`. My first validator enforced the wrong invariant; the corrected one found 3 real overhang bugs |
+| **006** | Lighting, atmosphere, quality tiers | Reference device + budgets; tiers chosen from a MEASURED frame time. **Its review later found the tiers changed almost nothing** — see job 009 |
+| **007** | Magnet core | Four states, pool, cap, batched grant. Reviewer found 6 criticals: abandoned pulls **bricked a magnet for the session**; a 16.2-stud grant gate against a 2.5-stud arrival |
+| **008** | Flow, RUSH, Capacity, Drive | All four stats real and upgradeable. A full magnet **spun the claim loop at 93% rejection**; Flow re-triggered RUSH forever |
+| **009** | Quality tiers, repaired | Light cull **could never fire** (kit max 18 vs threshold 40); Low's PBR drop **undone by the server on every spawn** |
+| **010** | Magnet VFX + sound system | Five VFX states on one emitter; 14 sound slots wired and deliberately empty |
 
-**Pattern worth noting:** every job so far has had a real defect found by review or by running it. Three
-were things I had already reported to you as working.
+**Pattern worth noting:** every job so far has had a real defect found by review or by running it, and
+several were things I had already reported to you as working. Job 006 was reported complete and its
+review, run three jobs later, found that three of the four things a quality tier is supposed to change
+did nothing at all.
 
 ## 🎨 The four decisions you made at intake
 
@@ -67,28 +79,25 @@ lesson, see [PITFALLS #45](PITFALLS.md#45-the-rendered-docs-site-misreports-depr
 
 ## ▶️ The recommended next move
 
-**Job 002 — create the place and probe the sync layout.** It is the first item of
-[build group 01](build/01-foundation.md) and it blocks everything, because every file every later job
-writes to disk assumes it.
+**Group 05 — the Workshop**, then **group 06 — boot and HUD**. The magnet works but the player has
+nowhere to spend anything and no readout of what they are carrying: `MagnetState` pushes coins, scrap,
+capacity, Flow tier and RUSH over `StatsChanged` every time they change, and **nothing renders it.**
+Right now the only way to see your own Flow is a dev command.
 
-Right now `.jobconfig.json` **guesses** the layout from The Last Tide (flat: service folders at the sync
-root, `StarterPlayerScripts/` at the root rather than nested under `StarterPlayer/`). **Jungle uses the
-nested Rojo convention instead — the two disagree**, and Tide job 003 was burned assuming the wrong one.
-ELEVATOR 13 then inherited the same unverified guess rather than resolving it; do not make that three.
+Two things worth doing before or alongside that:
 
-It needs you to have Studio open on the place. What the probe settles:
+1. **Fill the 14 sound slots.** [assets/registry/sounds.md](../assets/registry/sounds.md) has one row
+   per slot with length, what it must not contain, and a shortlist. The roadmap's gate question lists
+   **sound** as item 2 of what to fix if sweeping is not satisfying — ahead of the Workshop, ahead of
+   everything downstream. It needs a human to listen.
+2. **Play it and answer the gate question**, which is not something Claude can sign off:
+   *when the player sees a strange object in the distance, do they think "I want that on my robot"?*
+   Everything from group 05 on is wasted if the answer is no. It is answerable today for the sweep
+   half — with the caveat that the sweep is currently silent.
 
-- Flat vs nested layout.
-- Which service folders actually sync (on Tide, `StarterGui`, `StarterPack` and `Workspace` do **not**).
-- Which file suffix produces which class — and specifically whether `.client.luau` in
-  `StarterPlayerScripts` **runs twice** here, as it does on Tide.
-
-Then `.jobconfig.json` is rewritten with what was **observed**, and its `_status` stops saying
-UNVERIFIED.
-
-After that, [group 01](build/01-foundation.md) in order. Note that its *dev/test configuration* item
-(forced Shift, jump-to-zone, grant Magnet Power, spawn a named part) is not "later" — it is what makes
-every subsequent bug reproducible in a game with three overlapping randomised refresh cycles.
+⚠️ **Do not tick build-group checkboxes as a way of tracking progress.** `tools/gen-build-manifest.py`
+rewrites those files and emits `- [ ]` unconditionally, so a tick is erased on the next run. Progress
+lives in `Jobs/`.
 
 ---
 
@@ -102,7 +111,8 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 | 1 | **Commit the work** | Claude never commits. You committed twice mid-session; everything after `1a2c6a6` is uncommitted |
 | 2 | **Social Slots + access level** — the last two place settings | `Roblox optimized` social slots can push a server past 12, which every performance budget assumes. Decide before the place is joinable — see [systems/places](systems/places/README.md#social-slots--the-one-still-open) |
 | 3 | **Reopen the place in Studio** before the next publish | Its session reported `MaxPlayers = 60` after you set 12 on the web; publishing from a stale session could overwrite it |
-| 4 | Later, at [the gate](roadmap/mvp.md#the-gate): **judge whether the sweep feels good** | A *feel* question, played. Not something Claude can sign off |
+| 4 | **14 sound ids** — [assets/registry/sounds.md](../assets/registry/sounds.md) | I searched our catalog and the Creator Store and wrote the spec per slot; a human picks and listens. The audio rule forbids me filling these with a guess |
+| 5 | Now answerable: at [the gate](roadmap/mvp.md#the-gate), **judge whether the sweep feels good** | A *feel* question, played. Not something Claude can sign off. The sweep exists today — but it is silent until row 4 lands, and sound is item 2 of the gate's own fix-list |
 
 ---
 

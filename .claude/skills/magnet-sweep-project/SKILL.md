@@ -52,6 +52,10 @@ Source of record: `assets/MAGNET SWEEP.md` (the 87-section intake) plus `assets/
 
 - **Inspect Studio through MCP before claiming implementation state.** Docs existing does not mean code
   exists; docs missing does not mean code doesn't.
+- ⚠️ **`require` in `execute_luau` builds a SECOND copy of a module**, with its own state. Reading a
+  server module's state that way measures a blank object, not the running game. Go through the
+  `DevCommand` remote, or read shared Instances and attributes. This produced two confidently wrong
+  readings in job 008 before it was caught.
 - **`IMPLEMENTED` is not `VERIFIED`.** `IMPLEMENTED` = code/content exists. `VERIFIED` = a real
   playtest exercised it and the result was recorded.
 - **Never silently overturn an accepted decision** in
@@ -145,6 +149,14 @@ Each links to its decision record.
 | [`docs/build/`](../../../docs/build/README.md) | **The manifest — what to build next** |
 | [`docs/roadmap/`](../../../docs/roadmap/) | MVP, launch |
 | [`docs/PITFALLS.md`](../../../docs/PITFALLS.md) | Mistakes already paid for. Read before building |
+| [`Jobs/`](../../../Jobs/) | **The record of what was actually done.** `docs/build/` is the intent; this is the outcome |
+| [`findings/`](../../../findings/) | Real defects found and deliberately deferred, with the reasoning |
+| [`Planned/`](../../../Planned/) | One file per queued idea. Promoting one = a new job intake |
+| [`assets/registry/`](../../../assets/registry/) | Asset ids, per type. Grep before sourcing anything |
+| [`tools/`](../../../tools/README.md) | Generators and checkers. Run them before calling a job done |
+
+⚠️ **`docs/build/*.md` checkboxes are not progress.** `gen-build-manifest.py` rewrites those files and
+emits `- [ ]` unconditionally, so a tick is erased on the next run. `Jobs/` is the record.
 
 ## The gate that matters
 
