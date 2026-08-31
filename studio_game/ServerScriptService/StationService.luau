@@ -7,7 +7,7 @@
 
 	🔴 FOUND BY ATTRIBUTE, NEVER BY POSITION.
 
-	The Workshop is REGENERATED from `WorkshopSpec` on every server start, so a station's world
+	The hub is REGENERATED from `HubSpec` on every server start, so a station's world
 	position is an output, not a fact — it moved twice during job 012 alone (the Scrap Arena to
 	clear the sightline, then every sign when the plinths became machines). `WorkshopBuilder`
 	stamps `StationId` on each station's folder for exactly this reason. Anything here that hunted
@@ -25,7 +25,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = ReplicatedStorage:WaitForChild("Config", 20)
 local Economy = require(Config:WaitForChild("Economy", 20))
-local WorkshopSpec = require(ReplicatedStorage:WaitForChild("Workshop", 20):WaitForChild("WorkshopSpec", 20))
+local HubSpec = require(ReplicatedStorage:WaitForChild("Hub", 20):WaitForChild("HubSpec", 20))
 local Log = require(ReplicatedStorage:WaitForChild("Log", 20)).scope("Stations")
 
 local MagnetState = require(script.Parent:WaitForChild("MagnetState", 20))
@@ -83,6 +83,10 @@ StationService.BEHAVIOUR = {
 		screen = nil,
 		notYet = "NO PARTS DISCOVERED YET",
 	},
+	--- ⚠️ Kept, but it no longer stands in a base. Job 019 moved the way out to the ring's LANE
+	--- SLOT -- the gap in the ring -- so this behaviour is attached to the lane mouth rather than
+	--- to a station inside somebody's base. Entering the factory is not a thing you do at your own
+	--- Recycler.
 	FactoryEntrance = {
 		actionText = "ENTER",
 		objectText = "FACTORY ENTRANCE",
@@ -113,12 +117,12 @@ local PROMPT_DISTANCE = 14
 --- The part a prompt should hang on: the machine's glowing face, which is the thing the player is
 --- looking at. Falls back to any part, so a station whose piece changed still gets a prompt.
 local function promptHost(station: Instance): BasePart?
-	local machine = station:FindFirstChild("Station_Machine")
-	if machine then
-		for _, d in ipairs(machine:GetDescendants()) do
-			if d:IsA("BasePart") and d.Material == Enum.Material.Neon then
-				return d
-			end
+	--- ⚠️ The fixture IS the machine now. In the hall each station was a folder containing a
+	--- `Station_Machine`; in a base the machine model is the fixture itself, so the glowing face is
+	--- a direct descendant rather than a grandchild.
+	for _, d in ipairs(station:GetDescendants()) do
+		if d:IsA("BasePart") and d.Material == Enum.Material.Neon then
+			return d
 		end
 	end
 	for _, d in ipairs(station:GetDescendants()) do
@@ -135,21 +139,45 @@ end
 --- replaced, so calling this after a `workshop.rebuild` is correct rather than additive.
 function StationService.attachPrompts(): (number, { string })
 	local problems = {}
-	local root = workspace:FindFirstChild("Workshop")
-	local stations = root and root:FindFirstChild("Stations")
-	if not stations then
-		return 0, { "no Workspace.Workshop.Stations -- the room has not been built" }
+	local root = workspace:FindFirstChild("Hub")
+	local bases = root and root:FindFirstChild("Bases")
+	if not bases then
+		return 0, { "no Workspace.Hub.Bases -- the hub has not been built" }
+	end
+
+	--- 🔴 STATIONS ARE NOW PER-BASE. There were seven shared stations in one hall; there are now
+	--- three fixtures inside each of twelve bases. So this walks every base and stamps the owning
+	--- base's index onto each prompt alongside the station id.
+	---
+	--- ⚠️ Found by ATTRIBUTE, never by name or coordinate. `HubBuilder` stamps `StationId` and
+	--- `BaseIndex` on each fixture; the hub is regenerated every start and every position in it can
+	--- move, so a coordinate would be stale the first time a base got wider.
+	local machines: { Instance } = {}
+	for _, base in ipairs(bases:GetChildren()) do
+		local fixtures = base:FindFirstChild("Fixtures")
+		if fixtures then
+			for _, m in ipairs(fixtures:GetChildren()) do
+				if m:GetAttribute("StationId") then
+					table.insert(machines, m)
+				end
+			end
+		end
 	end
 
 	local n = 0
 	local seen: { [string]: boolean } = {}
-	for _, station in ipairs(stations:GetChildren()) do
+	local perBase: { [number]: number } = {}
+	for _, station in ipairs(machines) do
 		local id = station:GetAttribute("StationId")
+		local baseIndex = station:GetAttribute("BaseIndex")
 		if type(id) ~= "string" then
 			table.insert(problems, ("%s has no StationId attribute -- the builder must stamp it"):format(station.Name))
 			continue
 		end
 		seen[id] = true
+		if type(baseIndex) == "number" then
+			perBase[baseIndex] = (perBase[baseIndex] or 0) + 1
+		end
 
 		local behaviour = StationService.BEHAVIOUR[id]
 		if not behaviour then
@@ -177,6 +205,11 @@ function StationService.attachPrompts(): (number, { string })
 		--- ⚠️ The id travels ON the prompt. The client reads it to decide which screen to open,
 		--- so it never has to know where a station is or what it is called in the Explorer.
 		prompt:SetAttribute("StationId", id)
+		--- 🔴 Which base this prompt belongs to. Ownership is enforced server-side; this is here so
+		--- the client can say WHOSE station it is refusing, rather than just refusing.
+		if type(baseIndex) == "number" then
+			prompt:SetAttribute("BaseIndex", baseIndex)
+		end
 		--- 🔴 THE WHOLE CONTRACT TRAVELS ON THE PROMPT.
 		---
 		--- `screen` and `notYet` used to live only in this table, and the client kept its own
@@ -203,13 +236,26 @@ function StationService.attachPrompts(): (number, { string })
 		n += 1
 	end
 
-	--- ⚠️ Every station in the SPEC must have got a prompt. Counting the prompts we made would
-	--- report success for a room that built two stations; comparing against the spec is what
-	--- makes this able to fail.
-	for _, s in ipairs(WorkshopSpec.STATIONS) do
-		if not seen[s.id] then
-			table.insert(problems, ("station %q is in the spec but was not found in the built room"):format(s.id))
+	--- ⚠️ Every fixture in the SPEC must have got a prompt, IN EVERY BASE. Counting the prompts we
+	--- made would report success for a hub that built two bases; comparing against the spec times
+	--- the base count is what makes this able to fail.
+	for _, f in ipairs(HubSpec.FIXTURES) do
+		if not seen[f.id] then
+			table.insert(problems, ("fixture %q is in HubSpec but was not found in any base"):format(f.id))
 		end
+	end
+	local wantPerBase = #HubSpec.FIXTURES
+	for index, got in pairs(perBase) do
+		if got ~= wantPerBase then
+			table.insert(problems, ("base %d got %d prompts, not %d"):format(index, got, wantPerBase))
+		end
+	end
+	local basesSeen = 0
+	for _ in pairs(perBase) do
+		basesSeen += 1
+	end
+	if basesSeen ~= HubSpec.BASES then
+		table.insert(problems, ("%d bases have prompts, but HubSpec says %d"):format(basesSeen, HubSpec.BASES))
 	end
 
 	return n, problems
@@ -277,12 +323,26 @@ function StationService.playerIsAt(player: Player, stationId: string): (boolean,
 	if not root then
 		return false, "no character"
 	end
-	local ws = workspace:FindFirstChild("Workshop")
-	local stations = ws and ws:FindFirstChild("Stations")
-	if not stations then
-		return false, "the Workshop is not built"
+	--- 🔴 Walks the BASES, not a single Stations folder. Job 019 made stations per-base, and this
+	--- proximity check is the one thing standing between a modified client and every economy remote
+	--- in the game — so it had to move with them rather than keep looking at a folder that no longer
+	--- exists. It would have returned "the Workshop is not built" for every call, refusing honest
+	--- players at their own Recycler.
+	local hub = workspace:FindFirstChild("Hub")
+	local bases = hub and hub:FindFirstChild("Bases")
+	if not bases then
+		return false, "the hub is not built"
 	end
-	for _, station in ipairs(stations:GetChildren()) do
+	local candidates: { Instance } = {}
+	for _, base in ipairs(bases:GetChildren()) do
+		local fixtures = base:FindFirstChild("Fixtures")
+		if fixtures then
+			for _, m in ipairs(fixtures:GetChildren()) do
+				table.insert(candidates, m)
+			end
+		end
+	end
+	for _, station in ipairs(candidates) do
 		if station:GetAttribute("StationId") == stationId then
 			local host = promptHost(station)
 			if not host then

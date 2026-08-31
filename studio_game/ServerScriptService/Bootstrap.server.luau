@@ -329,10 +329,23 @@ do
 	-- ⚠️ `EnvironmentSpecularScale` was 1.00 and is the single biggest offender: polished metal
 	-- mirroring a bright sky blew the grated walkway out to pure white. 0.30 keeps the gloss and
 	-- loses the blowout.
+	-- 🔴 RE-DERIVED IN JOB 019, against `MapConcept.png` rather than `Arena.png`, and the two
+	-- paintings do not agree. `Arena.png` is a lit interior; `MapConcept.png` is a **top-down
+	-- factory at dusk** where every machine is its own light source and the deck is dark blue-grey.
+	-- The hub is built from the second one.
+	--
+	-- ⚠️ Seen, not reasoned, again — and this time in both directions. At the job-012 values
+	-- (ClockTime 14, EnvSpec 0.30, Ambient 70/76/90) the ring blew out to near-white and the owner's
+	-- verdict was "looks like a 1st grader made it". At full night it went black. **17.4 with
+	-- Ambient 56/64/84** is where the deck still reads and the neon still wins.
+	--
+	-- ⚠️ `EnvironmentSpecularScale` goes back UP to 0.6. Job 012 dropped it to 0.30 to stop midday
+	-- sky blowing out chrome; at dusk there is no bright sky to mirror, so the gloss is affordable
+	-- again — and gloss is what makes metal read as metal (style §1).
 	local WANT = {
-		ClockTime = { 8, 17 }, -- daylight; the hall reads as lit, not as a cave
-		Brightness = { 1.5, 4.0 },
-		EnvironmentSpecularScale = { 0.15, 0.55 },
+		ClockTime = { 16.5, 18.5 }, -- dusk: lit deck, dominant neon
+		Brightness = { 1.5, 3.0 },
+		EnvironmentSpecularScale = { 0.45, 0.9 },
 	}
 	local readings = {
 		ClockTime = Lighting.ClockTime,
@@ -385,27 +398,29 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 --------------------------------------------------------------------------------
--- The Workshop. Job 012.
+-- The hub. Job 019 -- a ring of player bases around the Arena.
 --
--- ⚠️ Built BEFORE the scrap pool, because `WorkshopBuilder` rebuilds `ServerStorage.Kit` from
--- `KitSpec` and anything already holding a reference into the old folder would be left pointing
--- at a destroyed instance.
+-- 🔴 REPLACES the Workshop's 13x13 hall (job 012). `MapConcept.png` plus the owner's sketch: up to
+-- twelve per-player bases in a ring, one Arena in the middle, ONE run lane out to the corridor.
+--
+-- ⚠️ STILL FIRST, and still before the scrap pool. `HubBuilder` took over rebuilding
+-- `ServerStorage.Kit` from `WorkshopBuilder` -- `ZoneBuilder` places pieces out of that folder, so
+-- retiring the Workshop without moving the kit build would have broken every zone silently.
 --------------------------------------------------------------------------------
 
 do
-	local WorkshopBuilder = require(need(script.Parent, "WorkshopBuilder"))
+	local HubBuilder = require(need(script.Parent, "HubBuilder"))
+	local HubSpec = require(need(need(ReplicatedStorage, "Hub"), "HubSpec"))
 
-	--- ⚠️ Goes through the module Bootstrap already required, NOT a fresh `require`.
-	--- `execute_luau` runs in a separate Luau context and `require` there builds a SECOND copy of
-	--- a module with its own state (PITFALLS #16, #17) -- which for this module means a second
-	--- `kitRoot` pointing at a folder the first copy is about to destroy. A dev command is the
-	--- only honest way to exercise the real builder from outside.
-	DevTools.register("workshop.rebuild", "Rebuild the Workshop from the spec (also the idempotence test)", function()
+	--- ⚠️ Through the module Bootstrap already required, never a fresh `require`: `execute_luau`
+	--- runs in a separate Luau context and would build a second copy with its own `kitRoot`
+	--- (PITFALLS #16, #17).
+	DevTools.register("hub.rebuild", "Rebuild the hub ring from HubSpec (also the idempotence test)", function()
 		local before = 0
 		for _, d in ipairs(workspace:GetDescendants()) do
 			if d:IsA("BasePart") then before += 1 end
 		end
-		local built, parts, problems = WorkshopBuilder.build()
+		local built, parts, problems = HubBuilder.build()
 		local after = 0
 		for _, d in ipairs(workspace:GetDescendants()) do
 			if d:IsA("BasePart") then after += 1 end
@@ -413,58 +428,27 @@ do
 		if not built then
 			return false, ("refused: %s"):format(table.concat(problems, "; "))
 		end
-		--- 🔴 RE-ATTACH FIRST, REPORT SECOND.
-		---
-		--- The rebuild DESTROYS the station folders and every prompt hanging inside them. An
-		--- earlier version returned early when the build reported ANY problem -- a missing dressing
-		--- piece, a sign with no rim -- and so skipped this, leaving all seven stations with zero
-		--- prompts while the reply talked only about the sign. The room looked right and could not
-		--- be used.
-		---
-		--- Note the shape: the guard that fixed a silent-success bug created the next one. Doing
-		--- the work before deciding what to say removes the ordering question entirely.
-		local StationService = require(need(script.Parent, "StationService"))
-		local reattached, stationProblems = StationService.attachPrompts()
-		for _, sp in ipairs(stationProblems) do
-			table.insert(problems, sp)
-		end
-
-		--- ⚠️ Problems are reported on SUCCESS too, and NAMED. A build that succeeded with a
-		--- blocked sightline used to return a cheerful "rebuilt: 362 parts (idempotent: YES)".
-		--- Idempotent means the SECOND build leaves the world the same size as the first; a rebuild
-		--- that appends shows up here as a climbing number.
-		local summary = ("rebuilt: %d Workshop parts | workspace %d -> %d (idempotent: %s) | %d/%d prompts"):format(
-			parts, before, after, before == after and "YES" or "*** NO, THE WORLD GREW ***",
-			reattached, #require(need(ReplicatedStorage, "Workshop"):WaitForChild("WorkshopSpec")).STATIONS)
+		local summary = ("rebuilt: %d hub parts | workspace %d -> %d (idempotent: %s)"):format(
+			parts, before, after, before == after and "YES" or "*** NO, THE WORLD GREW ***")
 		if #problems > 0 then
 			return true, ("%s | %d PROBLEM(S): %s"):format(summary, #problems, table.concat(problems, "; "))
 		end
 		return true, summary
 	end)
 
-	local root, parts, problems = WorkshopBuilder.build()
+	local root, parts, problems = HubBuilder.build()
 	for _, p in ipairs(problems) do
-		Log.error("WORKSHOP %s", p)
+		Log.error("HUB %s", p)
 	end
-	--- 🔴 A BLOCKED SIGHTLINE IS FATAL IN STUDIO, not a log line.
-	---
-	--- `build()` returns a non-nil root when the geometry was placed but a check failed, and the
-	--- old test here was `if not root` -- so decision 0001's load-bearing check had no failing
-	--- path that reached a human. Any problem now stops a Studio session, for the same reason a
-	--- bad config does: it must not be playtested and mistaken for an art problem.
 	if not root or #problems > 0 then
-		-- Same stance as a bad config: in Studio this must not be playtested and mistaken for an
-		-- art problem. On a live server a room with a misplaced sign beats no room at all.
 		if RunService:IsStudio() then
-			error(("WORKSHOP FAILED: %d problem(s) -- see the errors above"):format(#problems), 0)
+			error(("HUB FAILED: %d problem(s) -- see the errors above"):format(#problems), 0)
 		end
 	else
-		-- ⚠️ Stated against the budget, not on its own. "412 parts" is a number you scroll past;
-		-- "412 / 1800" is one you notice the day it is 1900.
-		Log.info("Workshop: %d parts of the %d-part in-view budget (%.0f%%)",
-			parts, Perf.BUDGET.MAX_PARTS_IN_VIEW, parts / Perf.BUDGET.MAX_PARTS_IN_VIEW * 100)
+		Log.info("Hub: %d parts of the %d-part in-view budget (%.0f%%) -- %d bases",
+			parts, Perf.BUDGET.MAX_PARTS_IN_VIEW, parts / Perf.BUDGET.MAX_PARTS_IN_VIEW * 100, HubSpec.BASES)
 		if parts > Perf.BUDGET.MAX_PARTS_IN_VIEW then
-			Log.error("the Workshop alone exceeds the whole in-view part budget -- a zone chunk still has to fit beside it")
+			Log.error("the hub alone exceeds the in-view budget, and every base is visible from every other by design")
 		end
 	end
 end
@@ -473,9 +457,9 @@ end
 -- The zones. Job 017 -- the factory stops being one room.
 --
 -- ⚠️ AFTER the Workshop and BEFORE the scrap pool, and both halves matter.
---   * After, because `WorkshopBuilder` is what rebuilds `ServerStorage.Kit`, and `ZoneBuilder`
---     places pieces out of that folder. Building a zone first would place from a kit that is
---     about to be destroyed.
+--   * After, because `HubBuilder` is what rebuilds `ServerStorage.Kit` (it took that over from
+--     the retired `WorkshopBuilder`), and `ZoneBuilder` places pieces out of that folder.
+--     Building a zone first would place from a kit that is about to be destroyed.
 --   * Before, because `ScrapService` needs somewhere to put tier-1 scrap, and it asks
 --     `ZoneManager` for the spawn volumes rather than holding a path into a zone.
 --------------------------------------------------------------------------------
@@ -525,27 +509,14 @@ do
 	else
 		--- ⚠️ Stated against the SHARED budget, not the zone's own. `MAX_PARTS_IN_VIEW` is
 		--- documented as "a zone chunk plus the Workshop", so the number that matters is the total.
-		--- ⚠️ The BUILT geometry, not `workspace:GetDescendants()`.
-		---
-		--- The first version counted the whole workspace and called it "in view". Two things were
-		--- wrong with that and they pulled in opposite directions: it ran BEFORE
-		--- `ScrapService.init()` allocated its 400-part pool, so it under-reported by a third; and
-		--- "in view" is a RENDERING ceiling, while the Workshop (z -52..52) and zone 1
-		--- (z -284..-116) sit 64 studs apart behind solid walls and can never be co-visible. It
-		--- compared two quantities that were not the same quantity.
-		local ws = workspace:FindFirstChild("Workshop")
-		local workshopParts = 0
-		if ws then
-			for _, d in ipairs(ws:GetDescendants()) do
-				if d:IsA("BasePart") then workshopParts += 1 end
-			end
+		local total = 0
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if d:IsA("BasePart") then total += 1 end
 		end
-		local worst = math.max(parts, workshopParts)
-		Log.info("Zone 1: %d parts | Workshop %d | worst single view %d of the %d-part budget (%.0f%%)",
-			parts, workshopParts, worst, Perf.BUDGET.MAX_PARTS_IN_VIEW,
-			worst / Perf.BUDGET.MAX_PARTS_IN_VIEW * 100)
-		if worst > Perf.BUDGET.MAX_PARTS_IN_VIEW then
-			Log.error("a single space exceeds the in-view part budget, and eleven more zones are coming")
+		Log.info("Zone 1: %d parts | workspace total %d of the %d-part in-view budget (%.0f%%)",
+			parts, total, Perf.BUDGET.MAX_PARTS_IN_VIEW, total / Perf.BUDGET.MAX_PARTS_IN_VIEW * 100)
+		if total > Perf.BUDGET.MAX_PARTS_IN_VIEW then
+			Log.error("the Workshop and zone 1 together exceed the in-view part budget, and eleven more zones are coming")
 		end
 	end
 end
@@ -605,8 +576,10 @@ do
 	--- ⚠️ Against the DENOMINATOR. "stations: 5 prompt(s) attached" and "stations: 7" look equally
 	--- healthy in scrollback -- this file makes exactly that complaint about part counts twenty
 	--- lines earlier and then did not apply it here.
-	local WorkshopSpec = require(need(need(ReplicatedStorage, "Workshop"), "WorkshopSpec"))
-	local wanted = #WorkshopSpec.STATIONS
+	local HubSpec = require(need(need(ReplicatedStorage, "Hub"), "HubSpec"))
+	--- ⚠️ Fixtures TIMES bases. Three per base across twelve bases is 36 prompts, and comparing
+	--- against 3 would call a hub with one base healthy.
+	local wanted = #HubSpec.FIXTURES * HubSpec.BASES
 	if attached < wanted then
 		Log.error("stations: only %d of %d prompts attached", attached, wanted)
 	else

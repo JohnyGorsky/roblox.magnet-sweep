@@ -688,7 +688,7 @@ local STAGES: { Stage } = {
 	},
 	{
 		name = "PLACE",
-		waiting = "ENTERING THE WORKSHOP",
+		waiting = "ENTERING THE FACTORY",
 		slowAfter = 20,
 		--- §"Failure paths": hold at this stage rather than dropping the player into a void.
 		slow = "WAITING FOR THE WORLD TO STREAM IN",
@@ -703,7 +703,17 @@ local STAGES: { Stage } = {
 			if not root then
 				return false
 			end
-			if not workspace:FindFirstChild("Workshop") then
+			--- 🔴 `Hub`, not `Workshop`. Job 019 replaced the hall with the ring of bases and renamed
+			--- the folder, and this line kept looking for the old name — so PLACE could never
+			--- complete, the screen sat on "WAITING FOR THE WORLD TO STREAM IN" for the full 90 s,
+			--- and only the watchdog released it. The ground ray beneath it was passing the whole
+			--- time.
+			---
+			--- ⚠️ A literal, and it has to be: this file runs in `ReplicatedFirst` and may not
+			--- require `ReplicatedStorage` for a shared constant. So the name is checked against
+			--- what actually exists, and says so out loud when it does not.
+			local hub = workspace:FindFirstChild("Hub")
+			if not hub then
 				return false
 			end
 			local params = RaycastParams.new()
