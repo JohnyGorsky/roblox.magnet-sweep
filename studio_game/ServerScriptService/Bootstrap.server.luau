@@ -578,7 +578,7 @@ do
 	else
 		local placed = 0
 		for _, v in ipairs(zone.spawnVolumes) do
-			placed += ScrapService.spawnBox(v.centre, v.halfX, v.halfZ, Zone1Spec.SCRAP_PER_VOLUME)
+			placed += ScrapService.spawnBox(v.centre, v.halfX, v.halfZ, Zone1Spec.SCRAP_PER_VOLUME, zone.tier)
 		end
 		local wanted = #zone.spawnVolumes * Zone1Spec.SCRAP_PER_VOLUME
 		--- ⚠️ Against the denominator, the complaint this file makes about part counts and station

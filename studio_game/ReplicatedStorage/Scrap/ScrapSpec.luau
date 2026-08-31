@@ -81,38 +81,116 @@ ScrapSpec.TIER1 = {
 } :: { ScrapDef }
 
 --------------------------------------------------------------------------------
+-- Tier 2 — TOY ASSEMBLY. "Colorful toy manufacturing."
+--------------------------------------------------------------------------------
+
+--- `docs/content/zones` tier 2: *"toy cars, wind-up mechanisms, metal blocks, toy robots, springs"*.
+---
+--- ⚠️ **Springs are NOT redefined here.** `SPRING` already exists at tier 1 and tier 2's list names
+--- springs too; writing a second Spring would be two ids for one object and a second source of truth
+--- for its weight. `POOL` below composes tier 2 out of four new types **plus** the shared spring, so
+--- the game has one Spring and two zones that both spawn it.
+---
+--- 🔴 Weights step up past tier 1's ceiling on purpose. Tier 1's heaviest is `PIPE` at 12 against a
+--- starter Power of 10 — the first thing you visibly cannot lift. Tier 2's `TOY_ROBOT` at 26 is the
+--- same idea one gate later: zone 2 opens at Power 20, so its heaviest object is still out of reach
+--- when you first walk in.
+ScrapSpec.TIER2 = {
+	{
+		id = "BLOCK", name = "Metal Block", tier = 2, weight = 8, value = 4,
+		size = { 1.1, 1.1, 1.1 },
+		surface = "PaintedGloss", color = "#2F6BE8", sound = "Tool", weightShare = 30,
+	},
+	{
+		id = "WINDUP", name = "Wind-Up Mechanism", tier = 2, weight = 11, value = 6,
+		size = { 1.2, 0.5, 1.2 }, shape = "Cylinder", along = "Y",
+		surface = "Chrome", sound = "Gear", weightShare = 24,
+	},
+	{
+		id = "TOY_CAR", name = "Toy Car", tier = 2, weight = 16, value = 9,
+		size = { 2.4, 0.9, 1.2 },
+		surface = "PaintedGloss", color = "#FF8A6B", sound = "Vehicle", weightShare = 16,
+	},
+	{
+		id = "TOY_ROBOT", name = "Toy Robot", tier = 2, weight = 26, value = 15,
+		size = { 1.2, 2.0, 0.9 },
+		surface = "PaintedWorn", color = "#8FD63F", sound = "Machine", weightShare = 8,
+	},
+} :: { ScrapDef }
+
+--------------------------------------------------------------------------------
+
+--- Every tier's spawn pool. 🔴 The composition lives HERE rather than being implied by the `tier`
+--- field, because tier 2 deliberately re-uses tier 1's `SPRING` — a rule "everything whose tier
+--- field equals N" could not express that and would silently drop it.
+ScrapSpec.POOL = {
+	[1] = ScrapSpec.TIER1,
+	[2] = (function()
+		local pool = table.clone(ScrapSpec.TIER2)
+		for _, d in ipairs(ScrapSpec.TIER1) do
+			if d.id == "SPRING" then
+				table.insert(pool, d)
+			end
+		end
+		return pool
+	end)(),
+}
 
 local byId: { [string]: ScrapDef } = {}
-local totalShare = 0
-for _, d in ipairs(ScrapSpec.TIER1) do
-	byId[d.id] = d
-	totalShare += d.weightShare
+local totalShare: { [number]: number } = {}
+for tier, pool in pairs(ScrapSpec.POOL) do
+	local sum = 0
+	for _, d in ipairs(pool) do
+		--- ⚠️ A duplicate id across tiers is a bug, not a feature — `byId` would silently keep
+		--- whichever loaded last and every consumer would then disagree about that object's weight.
+		if byId[d.id] and byId[d.id] ~= d then
+			error(("ScrapSpec: duplicate id %q in more than one tier"):format(d.id), 0)
+		end
+		byId[d.id] = d
+		sum += d.weightShare
+	end
+	totalShare[tier] = sum
 end
 
 function ScrapSpec.byId(id: string): ScrapDef?
 	return byId[id]
 end
 
+function ScrapSpec.tiers(): number
+	local n = 0
+	for _ in pairs(ScrapSpec.POOL) do
+		n += 1
+	end
+	return n
+end
+
 --- Weighted pick from a tier's pool. `rng` is passed in so a seeded run is reproducible --
 --- a randomised game whose bugs cannot be reproduced is a game that cannot be fixed.
-function ScrapSpec.pick(rng: Random): ScrapDef
-	local roll = rng:NextNumber() * totalShare
+---
+--- ⚠️ `tier` defaults to 1 so every existing call site keeps its behaviour. It was not a parameter
+--- at all until job 018: `TIER1` was hardcoded in five places, which is why nothing could hold
+--- tier-2 scrap until this changed.
+function ScrapSpec.pick(rng: Random, tier: number?): ScrapDef
+	local t = tier or 1
+	local pool = ScrapSpec.POOL[t] or ScrapSpec.TIER1
+	local roll = rng:NextNumber() * (totalShare[t] or totalShare[1])
 	local acc = 0
-	for _, d in ipairs(ScrapSpec.TIER1) do
+	for _, d in ipairs(pool) do
 		acc += d.weightShare
 		if roll <= acc then
 			return d
 		end
 	end
-	return ScrapSpec.TIER1[1]
+	return pool[1]
 end
 
---- Heaviest object in the tier, so a spawner can tell whether a player can clear the field
+--- Heaviest object in a tier, so a spawner can tell whether a player can clear the field
 --- at all. Tier 1's PIPE at 12 is above the starter magnet's Power 10 ON PURPOSE: the very
 --- first thing the player cannot lift is visible from the start.
-function ScrapSpec.heaviest(): ScrapDef
-	local best = ScrapSpec.TIER1[1]
-	for _, d in ipairs(ScrapSpec.TIER1) do
+function ScrapSpec.heaviest(tier: number?): ScrapDef
+	local pool = ScrapSpec.POOL[tier or 1] or ScrapSpec.TIER1
+	local best = pool[1]
+	for _, d in ipairs(pool) do
 		if d.weight > best.weight then
 			best = d
 		end

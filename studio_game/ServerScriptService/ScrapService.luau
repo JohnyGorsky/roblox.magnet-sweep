@@ -274,7 +274,9 @@ end
 --- 🔴 This module knows nothing about zones, and must not. It is handed a volume in world space by
 --- whoever does know -- `Bootstrap`, via `ZoneManager` -- so that `ScrapService` never holds a path
 --- into a chunk that can stream out from under it.
-function ScrapService.spawnBox(centre: Vector3, halfX: number, halfZ: number, count: number): number
+--- ⚠️ `tier` decides which pool the pieces come from. Without it every zone would spawn tier-1
+--- scrap and look completely correct until somebody read the ids — a zone 2 full of screws.
+function ScrapService.spawnBox(centre: Vector3, halfX: number, halfZ: number, count: number, tier: number?): number
 	local n, ungrounded, perched = 0, 0, 0
 	--- 🔴 `groundY` stops on the FIRST thing under the ray, which is a lamp hood or a tank cap as
 	--- readily as the floor. The first version accepted whatever came back, and 7 of 56 pieces
@@ -299,7 +301,7 @@ function ScrapService.spawnBox(centre: Vector3, halfX: number, halfZ: number, co
 			perched += 1
 			continue
 		end
-		if ScrapService.spawn(Vector3.new(x, y + 0.35, z)) then
+		if ScrapService.spawn(Vector3.new(x, y + 0.35, z), ScrapSpec.pick(rng, tier)) then
 			n += 1
 		end
 	end

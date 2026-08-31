@@ -114,4 +114,71 @@ Both are the same lesson from different angles: **the instrument can be the thin
 
 - [x] Reproduced in **PLAY**, at the player's camera
 - [x] No world fact asserted from a constant — the two that were, were caught and re-measured
-- [ ] Independent reviewer agent — _running_
+- [x] Independent reviewer agent — **10 findings, all real, all fixed.** The pattern holds for a
+      seventeenth job.
+
+## What the review found
+
+It caught two things that would have shipped, and both were invisible to my own checks.
+
+**A 3.5-stud open trench down both sides of the corridor, full length, with both doorways opening
+over it.** Walls were placed a tile outboard of the floor — world ±40 against a deck ending at ±36.
+`WorkshopBuilder` has always placed at `±halfX`; this diverged from the pair it claims to model.
+
+🔴 **And my verification could not have seen it.** "X span 80, measured from part positions" measured
+wall **centres**. The gutter is the distance from the floor edge to the wall **face** — a different
+quantity. Re-verified properly: wall bodies now span 35.50–36.50 across a deck edge at 36.0, and a
+ray cast sideways from inside the deck hits wall at x = 34.20, before the edge.
+
+**The server took the destination zone from the client.** `enterZone` passed the client's `tier`
+straight through — no check against the server's own table, no Magnet Power gate, and
+`Zones.highestUnlocked` had zero call sites. The proximity half was right; this half did not exist.
+
+🔴 **My test passed for the wrong reason.** Only tier 1 exists, so every forged number was refused by
+a missing-zone lookup. **Job 018 arms it.** Now the client sends a station id, the server resolves the
+tier from `BEHAVIOUR`, and `sendTo` gates on Magnet Power.
+
+**The tint selector was wrong twice, and both were proxies.** `SmoothPlastic` first (3 parts of 90),
+then `Color == white` — but six kit surfaces default to white, so it repainted `HazardStripe` and
+`Rust`. Part colour multiplies the ColorMap, so the hazard band × lemon came out ≈ `#FFAA0A`: the
+markings stopped meaning hazard. `MaterialKit` already stamps an `MSSurface` attribute for exactly
+this question. The fix stops guessing and reads it, and the log is now a census by surface rather
+than a total — because "13 accented" looked healthy while 2 of the 13 were hazard stripes.
+
+### The rest
+
+| # | Finding | Fix |
+|---|---|---|
+| 4 | `ENTRY`/`EXIT` were chunk-local but every doc called them anchors — following HANDOFF literally put job 018's gate 200 studs from the zone | renamed `_LOCAL`, added `entryWorld()`/`exitWorld()`, HANDOFF points at `ZoneManager` |
+| 5 | No return path from zone 1, and no scrap refresh — the zone empties permanently after ~2 magnet-loads | named as known debt; the spec comment claiming the refresh already runs was **false** and is now future-tense |
+| 6 | `validate()`'s anchor check was arithmetically tautological; the ID check it advertised did not exist; props were checked by tile index where the Workshop uses world footprints | all three fixed — and the new footprint check **immediately failed on two real defects** the old one passed |
+| 7 | `ModelStreamingMode` never set, so "one Model = one chunk" was decorative | `Atomic` |
+| 8 | `zone.rebuild` always failed to re-register and left a destroyed model pinned in the registry | `ZoneManager.unregister` |
+| 9 | The budget line ran before the 400-part pool existed, and compared a whole-workspace count to a co-visibility ceiling | measures the worst single space |
+| 11 | Missing `.gitkeep`; a broken HANDOFF table row; `describe()` claimed to grep and does not | fixed |
+
+**The footprint check earned itself immediately.** On first run it refused the build:
+
+```
+prop 13 (Ind_PipeRun)   at tile -4,-5 spans x -40.0..-24.0  crosses the wall plane
+prop 20 (Prop_RobotArm) at tile  4,-6 spans x  30.0..39.8   crosses the wall plane
+```
+
+Both are wall-mounted kit pieces that were being placed on the nearest floor tile. Props now carry a
+`wall = "W"|"E"` field and are placed on the wall plane itself.
+
+**And 7 of 56 scrap pieces were spawning twelve studs up on lamp hoods** — `groundY` stops at the
+first thing under the ray. Spawns above the floor plane are now rejected and re-rolled; the count
+still lands on 56, and the log says how many were rejected.
+
+## Correction to this summary's own numbers
+
+🔴 **The analyzer figures reported earlier were wrong.** Claimed 209 → 219 (+10). Measured against a
+reconstructed HEAD: **197 → 219 (+22)**, Bootstrap 31 → **39** not 36, and the 12 diagnostics in the
+three new files were omitted entirely — my "before" run had those files already present, so it
+counted them on both sides.
+
+The characterisation survives: every one is an unresolvable-`require`/`WaitForChild` diagnostic, and
+there are **0 syntax errors and 0 real type errors** in the new code. The arithmetic did not.
+
+## Verification
