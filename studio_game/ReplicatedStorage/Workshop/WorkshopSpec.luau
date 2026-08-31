@@ -29,7 +29,6 @@ local KitSpec = require(ReplicatedStorage:WaitForChild("Kit", 20):WaitForChild("
 local WorkshopSpec = {}
 
 local T = KitSpec.TILE -- 8
-local G = KitSpec.GRID -- 4
 
 --------------------------------------------------------------------------------
 -- The room.
@@ -78,7 +77,57 @@ WorkshopSpec.ARENA_ANCHOR = Vector3.new(240, 14, 0)
 --- Expressed in TILE INDICES along the east run (the same -6..+6 as everything else), inclusive.
 --- Centred on z = 0 so the line from the spawn to `ARENA_ANCHOR` passes through the middle of it
 --- rather than clipping an edge.
-WorkshopSpec.APERTURE = { from = -1, to = 1 }
+--- 🔴 MEASURED, then widened. At 3 tiles (24 studs) the honest sightline sampler reported the
+--- Arena visible from only **32 % of the floor** -- and spec §8, which decision 0001 quotes,
+--- asks for it to be visible "from **much of** the Workshop". An independent review solved the
+--- same region analytically and got 29.5 %, so the sampler agrees with the maths.
+---
+--- 32 % is not "much of". 7 tiles (56 studs) is a factory door rather than a window, and it is
+--- what makes decision 0001's justification actually true rather than technically survivable.
+WorkshopSpec.APERTURE = { from = -3, to = 3 }
+
+--------------------------------------------------------------------------------
+-- Hall lighting.
+--------------------------------------------------------------------------------
+
+--[[
+	🔴 THE ROOM IS LIT AT NIGHT, AND THAT IS THE WHOLE ART DIRECTION.
+
+	The style skill opens with "a bright, glossy, slightly absurd toy factory **at night**", and
+	§1 is explicit that reflective material is only as interesting as its environment — "a
+	windowless factory box needs bright emissive signage and coloured lights to give the chrome
+	something to catch."
+
+	**Seen, not reasoned:** with the place at `ClockTime` 14.5 the neon signage was washed out to
+	almost nothing and the grated walkway blew out to pure white, because polished metal under
+	`EnvironmentSpecularScale = 1.0` was reflecting a bright blue midday sky. At night the same
+	geometry reads as the concept art does — each sign becomes a light source and pools its own
+	signal colour on the floor.
+
+	But seven sign lights cannot light a 104-stud hall. These are the fill: an overhead lamp run
+	on all four walls, so the floor between the stations is legible and the chrome has warm light
+	to catch from above as well as coloured light from the signs.
+]]
+
+--- Tile positions along each wall run that carry an overhead lamp.
+WorkshopSpec.LAMP_TILES = { -4, 0, 4 }
+
+--- How far in from the wall the lamps hang, so they light the floor rather than the wall face.
+WorkshopSpec.LAMP_INSET = 4
+
+--- ⚠️ Interior lamps, because a perimeter run alone does not light a room this size. The centre
+--- of a 104-stud hall is 52 studs from every wall -- further than any sane lamp range -- so the
+--- first version lit the walls beautifully and left the middle black. These hang over the floor
+--- on the diagonals plus the centre, where the player actually walks.
+WorkshopSpec.INTERIOR_LAMP_TILES = {
+	{ 0, 0 },
+	{ -3, -3 }, { 3, -3 }, { -3, 3 }, { 3, 3 },
+}
+
+--- ⚠️ A neutral WARM lamp, never a signal colour. A hall light that reads as recycler-green or
+--- alarm-red would make the colour language mean nothing (PITFALLS #39), which is why
+--- `KitSpec.PALETTE.LampWarm` exists and is documented as carrying no signal meaning.
+WorkshopSpec.LAMP_PIECE = "Light_Gantry"
 
 --------------------------------------------------------------------------------
 -- The seven stations (§8).
@@ -91,6 +140,9 @@ export type Station = {
 	--- 🔴 A SIGNAL COLOUR, and each one owns exactly one meaning. `validate()` fails on a
 	--- duplicate, because two stations sharing a colour destroys the thing the colour is for.
 	color: string,
+	--- The painted housing colour of the station's machine. Read off the concept art, where every
+	--- station is a big coloured machine rather than a grey box with a sign on it.
+	accent: string,
 	--- Tile-grid position of the station's centre, in TILES from the room centre.
 	tile: { number },
 	--- Which way the sign faces, in degrees about Y. 0 faces +Z.
@@ -110,86 +162,100 @@ WorkshopSpec.STATIONS = {
 		id = "MagnetLab",
 		label = "MAGNET LAB",
 		color = "#41D8FF", -- magnet cyan: it IS the magnet
+		-- The magnet is red + cyan ALWAYS -- the poles are the game's logo. A red housing under a
+		-- cyan face is the magnet's own south pole, not a borrowed alarm colour.
+		accent = "#E03A2F",
 		tile = { -5, -3 },
 		facing = 90, -- west wall, faces +X into the room
-		owner = "job 013 — opens the upgrade panel built in job 011",
+		owner = "job 013 -- opens the upgrade panel built in job 011",
 		dressing = {
-			{ piece = "Ind_ControlPanel", offset = { 0, 0, -T }, rot = 90 },
-			{ piece = "Ind_Generator", offset = { 0, 0, T * 1.5 }, rot = 90 },
+			{ piece = "Ind_ControlPanel", offset = { 12, 0, 8 }, rot = -30 },
+			{ piece = "Prop_Crate", offset = { 8, 0, 12 }, rot = 0 },
 		},
 	},
 	{
 		id = "Recycler",
 		label = "RECYCLER",
 		color = "#3FD64B", -- recycler green: money IN, and nothing else is ever green
+		accent = "#3FD64B",
 		tile = { -5, 3 },
 		facing = 90,
-		owner = "job 013 — RequestRecycle, still unbound",
+		owner = "job 013 -- RequestRecycle, still unbound",
 		dressing = {
-			{ piece = "Ind_Conveyor", offset = { 0, 0, T }, rot = 90 },
-			{ piece = "Ind_Tank", offset = { 0, 0, -T * 1.5 }, rot = 90 },
+			-- the conveyor runs OUT of the recycler into the room, as it does in the concept art
+			{ piece = "Ind_Conveyor", offset = { 14, 0, 0 }, rot = 90 },
+			{ piece = "Prop_Crate", offset = { 10, 0, 12 }, rot = 0 },
 		},
 	},
 	{
 		id = "Repair",
 		label = "REPAIR",
 		color = "#FF7A1A", -- weld orange: repair and robot HP
+		accent = "#FF7A1A",
 		tile = { -2, 5 },
 		facing = 180, -- south wall, faces -Z
-		owner = "job 013 — RequestRepair, still unbound; needs a robot (group 09)",
+		owner = "job 013 -- RequestRepair, still unbound; needs a robot (group 09)",
 		dressing = {
-			{ piece = "Prop_RobotArm", offset = { -T, 0, 0 }, rot = 0 },
-			{ piece = "Ind_PipeRun", offset = { T * 1.5, 0, 0 }, rot = 0 },
+			{ piece = "Prop_RobotArm", offset = { -14, 0, 6 }, rot = 0 },
+			{ piece = "Ind_Tank", offset = { 14, 0, 4 }, rot = 0 },
 		},
 	},
 	{
 		id = "RobotBay",
 		label = "ROBOT BAY",
-		-- ⚠️ Deliberately CHROME, not a signal colour. The robot is the point of the game, and the
-		-- temptation is to give it the loudest sign in the room -- but every signal colour already
-		-- means something, and inventing an eighth meaning is how the language starts to rot.
+		-- ⚠️ The SIGN stays chrome -- every signal colour already means something and the robot
+		-- must not invent an eighth. The HOUSING takes cobalt, a zone accent that carries no
+		-- signal meaning, which is what the concept art paints the Robot Bay.
 		color = "#B8C2CC",
+		accent = "#2F6BE8",
 		tile = { 2, 5 },
 		facing = 180,
-		owner = "group 09 — assembly; job 013 builds the shell",
+		owner = "group 09 -- assembly; job 013 builds the shell",
 		dressing = {
-			{ piece = "Prop_RobotArm", offset = { T, 0, 0 }, rot = 180 },
-			{ piece = "Struct_Platform", offset = { 0, 0, -T * 2 }, rot = 0 },
+			{ piece = "Prop_RobotArm", offset = { 14, 0, 6 }, rot = 180 },
+			{ piece = "Ind_Generator", offset = { -14, 0, 6 }, rot = 0 },
 		},
 	},
 	{
 		id = "PartArchive",
 		label = "PART ARCHIVE",
 		color = "#C46BFF", -- violet: the rarity ramp's own colour
+		accent = "#C46BFF",
 		tile = { -2, -5 },
 		facing = 0, -- north wall, faces +Z
-		owner = "P1 — the wall's contents are not in this job",
+		owner = "P1 -- the wall's contents are not in this job",
 		dressing = {
-			{ piece = "Ind_ControlPanel", offset = { -T * 1.5, 0, 0 }, rot = 0 },
+			{ piece = "Ind_ControlPanel", offset = { -14, 0, 6 }, rot = 20 },
 		},
 	},
 	{
 		id = "FactoryEntrance",
 		label = "FACTORY ENTRANCE",
 		color = "#E03A2F", -- signal red: danger, and the only way out of the safe hub
+		accent = "#4A545E", -- steel; the red sign and the hazard stripes carry this station
 		tile = { 3, -5 },
 		facing = 0,
-		owner = "group 07 — zones 1-2 attach here",
+		owner = "group 07 -- zones 1-2 attach here",
 		dressing = {
-			{ piece = "Struct_Gate", offset = { 0, 0, -T }, rot = 0 },
-			{ piece = "Prop_Beacon", offset = { -T * 1.5, 0, 0 }, rot = 0 },
-			{ piece = "Prop_Beacon", offset = { T * 1.5, 0, 0 }, rot = 0 },
+			-- ⚠️ Beacons stand CLEAR of the machine. An earlier version put the gate at the sign's
+			-- exact position and pushed both gate posts through the sign housing.
+			{ piece = "Prop_Beacon", offset = { -14, 0, 8 }, rot = 0 },
+			{ piece = "Prop_Beacon", offset = { 14, 0, 8 }, rot = 0 },
 		},
 	},
 	{
 		id = "ScrapArena",
 		label = "SCRAP ARENA",
 		color = "#FFC21A", -- crown gold: Arena control
-		tile = { 5, 0 },
+		accent = "#FFC21A", -- Arena-related, so a gold housing is the rule being followed
+		-- ⚠️ NOT on z = 0. At tile {5, 0} this station's own sign stood in the middle of the Arena
+		-- aperture and blocked the view of the Arena it was labelling -- caught by the sightline
+		-- raycast on the first build. Offset two tiles north so it sits beside the opening.
+		tile = { 5, -2 },
 		facing = 270, -- east wall, faces -X into the room
-		owner = "group 10 — the Arena itself stands at ARENA_ANCHOR",
+		owner = "group 10 -- the Arena itself stands at ARENA_ANCHOR",
 		dressing = {
-			{ piece = "Prop_Crate", offset = { 0, 0, T * 2 }, rot = 270 },
+			{ piece = "Prop_Crate", offset = { 10, 0, 12 }, rot = 0 },
 		},
 	},
 } :: { Station }
@@ -230,8 +296,18 @@ function WorkshopSpec.validate(): { string }
 		seenTile[key] = s.id
 
 		-- inside the room, and on the grid
-		if math.abs(s.tile[1]) * T > WorkshopSpec.HALF_X or math.abs(s.tile[2]) * T > WorkshopSpec.HALF_Z then
-			table.insert(problems, ("station %q at tile %s is outside the room"):format(s.id, key))
+		--- ⚠️ Calibrated so the FAILURE fails. `|tile| * 8 > 52` first trips at tile 7, which is
+		--- outside the wall loop's own range of +/-6 -- so it could never fire, and review
+		--- confirmed a station at tile 6 passing while 8 of its 10 parts landed beyond the wall.
+		--- The real limit is the wall, minus half the machine's depth.
+		local MACHINE_HALF_DEPTH = 4
+		local limit = WorkshopSpec.HALF_X - MACHINE_HALF_DEPTH
+		if math.abs(s.tile[1]) * T > limit or math.abs(s.tile[2]) * T > limit then
+			table.insert(problems, ("station %q at tile %s puts its machine through the wall (max %d studs from centre)")
+				:format(s.id, key, limit))
+		end
+		if #s.tile ~= 2 then
+			table.insert(problems, ("station %q has %d tile components, not 2"):format(s.id, #s.tile))
 		end
 		if s.facing % 90 ~= 0 then
 			table.insert(problems, ("station %q faces %d degrees -- signs sit on walls, so use a multiple of 90")
@@ -242,10 +318,38 @@ function WorkshopSpec.validate(): { string }
 			if not KitSpec.byId(d.piece) then
 				table.insert(problems, ("station %q dresses with %q, which is not a kit piece"):format(s.id, d.piece))
 			end
-			for _, v: number in ipairs(d.offset) do
-				if v % G ~= 0 then
-					table.insert(problems, ("station %q dressing %q sits at %s, off the %d-stud grid")
-						:format(s.id, d.piece, tostring(v), G))
+			if #d.offset ~= 3 then
+				table.insert(problems, ("station %q dressing %q has %d offset components, not 3 -- Vector3.new would take a nil")
+					:format(s.id, d.piece, #d.offset))
+				continue
+			end
+
+			--- 🔴 WHERE THE PIECE ACTUALLY LANDS, not whether its numbers divide by 4.
+			---
+			--- The offset is rotated by `facing` before use, so a table entry that reads as "away
+			--- from the wall" points AT the wall for facing 90 and 180. Independent review
+			--- measured two real casualties of that: the Recycler's tank ended up 60 studs^3
+			--- inside a wall panel, and the Robot Bay's platform cantilevered 12 studs OUTSIDE
+			--- the room with two of its legs standing on nothing.
+			---
+			--- The old check only asked whether each component was a multiple of 4 -- it measured
+			--- the number's divisibility and never its meaning, so both passed.
+			local rot = CFrame.Angles(0, math.rad(s.facing), 0)
+			local world = WorkshopSpec.stationPosition(s) + rot:VectorToWorldSpace(
+				Vector3.new(d.offset[1], d.offset[2], d.offset[3]))
+			--- A generous half-extent for the biggest piece placed here, so a piece whose CENTRE
+			--- is just inside the wall still fails.
+			local MARGIN = 8
+			if math.abs(world.X) + MARGIN > WorkshopSpec.HALF_X or math.abs(world.Z) + MARGIN > WorkshopSpec.HALF_Z then
+				table.insert(problems, ("station %q dressing %q lands at (%.0f, %.0f) -- inside or through the wall (room is +/-%d)")
+					:format(s.id, d.piece, world.X, world.Z, WorkshopSpec.HALF_X))
+			end
+
+			for i = 1, 3 do
+				local v = d.offset[i] or 0
+				if v % 2 ~= 0 then
+					table.insert(problems, ("station %q dressing %q component %d is %s, off the 2-stud sub-grid")
+						:format(s.id, d.piece, i, tostring(v)))
 				end
 			end
 		end
@@ -273,18 +377,48 @@ function WorkshopSpec.validate(): { string }
 			:format(WorkshopSpec.ARENA_ANCHOR.X, WorkshopSpec.HALF_X))
 	end
 
+	--- 🔴 NOTHING MAY STAND ON THE SIGHTLINE. Found the hard way: the SCRAP ARENA station sat on
+	--- tile {5, 0}, so its own sign stood in the middle of the aperture and blocked the view of
+	--- the Arena it was labelling. The raycast in `WorkshopBuilder` caught it — after 362 parts
+	--- had been placed. This catches the same mistake from the spec alone, before anything is
+	--- built, and names the station rather than the part id the raycast reports.
+	---
+	--- The sightline runs from the spawn to `ARENA_ANCHOR`; both sit at z = 0 today, so the test
+	--- is a corridor about the z of that line. It is derived from the two endpoints rather than
+	--- assuming z = 0, so moving either one keeps the check honest.
+	local lineZ = (WorkshopSpec.SPAWN.Z + WorkshopSpec.ARENA_ANCHOR.Z) * 0.5
+	local SIGN_HALF_WIDTH = 8 -- Sign_NeonSlab is 16 studs across
+	for _, s in ipairs(WorkshopSpec.STATIONS) do
+		local pos = WorkshopSpec.stationPosition(s)
+		local blocksLine = math.abs(pos.Z - lineZ) < SIGN_HALF_WIDTH
+		local betweenSpawnAndAnchor = pos.X > WorkshopSpec.SPAWN.X
+		if blocksLine and betweenSpawnAndAnchor then
+			table.insert(problems, ("station %q at z=%d stands on the Arena sightline (z=%d) -- its own sign would block the view")
+				:format(s.id, pos.Z, lineZ))
+		end
+	end
+
 	return problems
 end
 
---- The set of signal colours the stations claim, so anything else in the game can assert it is
---- not stealing one.
-function WorkshopSpec.signalColors(): { [string]: string }
-	local out: { [string]: string } = {}
-	for _, s in ipairs(WorkshopSpec.STATIONS) do
-		out[s.color] = s.id
-	end
-	return out
-end
+--[[
+	⚠️ NO `signalColors()` HELPER, DELIBERATELY — and this note is what replaces it.
+
+	There was one. It built the set of colours the stations claim, and its comment said it existed
+	"so anything else in the game can assert it is not stealing one". **Nothing ever called it.**
+	Dead code that made a constraint look policed while policing nothing, which is worse than an
+	absent check because it stops anyone from writing a real one.
+
+	And a real one cannot be written here, because the constraint is genuinely in tension with the
+	design system it comes from. `PITFALLS #39` says a kit piece must never wear a signal colour.
+	Style §5 explicitly lists "yellow robot arms" and "slate control panels with cyan screens" as
+	recurring kit pieces. Both are true and they contradict: `Prop_RobotArm` wears solid `#FFC21A`
+	(Arena gold) and `Ind_ControlPanel` wears `#41D8FF` (magnet cyan), and both are placed here.
+
+	So this is a KNOWN, ACCEPTED tension, written down rather than hidden behind a function that
+	returns a table nobody reads. If it is ever resolved, the place to resolve it is the style
+	skill, not a validator in the Workshop.
+]]
 
 function WorkshopSpec.station(id: string): Station?
 	for _, s in ipairs(WorkshopSpec.STATIONS) do

@@ -137,6 +137,13 @@ function Banner.clear()
 	stroke.Transparency = 1
 end
 
+--- The Banner's own `ScreenGui`.
+---
+--- ⚠️ Exposed so the HUD's layout audit can INCLUDE it. The audit walks one ScreenGui's
+--- descendants, and the banner lives in a different one -- so a banner overlapping a control, or
+--- clipping its own text, was invisible to every check in the game.
+Banner.screen = gui
+
 --- Show or hide the banner layer entirely.
 ---
 --- 🔴 THIS IS WHY IT EXISTS. `dev("hud.hide")` sets `Hud`'s `ScreenGui.Enabled = false` so that
@@ -147,13 +154,6 @@ end
 --- That does not just weaken the experiment, it inverts it: the test could no longer tell "the
 --- magnet taught me" from "the banner told me", which is the precise distinction decision 0018 is
 --- about. The HUD owns this flag, so there is exactly one writer.
---- The Banner's own `ScreenGui`.
----
---- ⚠️ Exposed so the HUD's layout audit can INCLUDE it. The audit walks one ScreenGui's
---- descendants, and the banner lives in a different one -- so a banner overlapping a control, or
---- clipping its own text, was invisible to every check in the game.
-Banner.screen = gui
-
 function Banner.setEnabled(on: boolean)
 	gui.Enabled = on
 	if not on then

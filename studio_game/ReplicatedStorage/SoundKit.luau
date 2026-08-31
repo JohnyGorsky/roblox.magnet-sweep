@@ -132,8 +132,12 @@ SoundKit.UI = {
 -- LANDED IDS — approved by the owner, 2026-08-30.
 --
 -- One block, so what is filled is visible at a glance and a slot cannot quietly acquire an id
--- somewhere further down the file. Licence for every one of these: Pro Sound Effects via the
--- Creator Store, free and verified, licensed for use WITHIN ROBLOX ONLY.
+-- somewhere further down the file.
+--
+-- ⚠️ TWO DIFFERENT LICENCES IN HERE, and the distinction matters if this audio is ever reused:
+--   * The 14 FAMILY/MAGNET ids are Pro Sound Effects via the Creator Store -- free and verified,
+--     licensed for use WITHIN ROBLOX ONLY. Not ours; not reusable off-platform.
+--   * `UI.Press` is the OWNER'S OWN upload (`johnygorsky10`), already shipping in Jungle. Ours.
 --------------------------------------------------------------------------------
 
 local LANDED = {
@@ -151,6 +155,11 @@ local LANDED = {
 	["MAGNET.Refuse"] = "9114236886", -- Electric arcing 9, 3.2s, starts and stops
 	["MAGNET.Rush"] = "9114238609", -- Electric arcing 10, 3.6s, a surge
 	["MAGNET.Full"] = "9114201951", -- Duffel bag vs stucco wall 2, 2.0s, dull thud
+	-- ⚠️ NOT a Pro Sound Effects clip and not a guess: this is the owner's OWN upload
+	-- (`johnygorsky10`), already shipping as the UI click in Jungle's `UIClick.local.luau` and
+	-- listed in the shared registry. Sourced by the documented order -- our own inventory first,
+	-- the Creator Store second. Verified loading in THIS place: IsLoaded=true, 1.06s.
+	["UI.Press"] = "89108158102227", -- ui_mouse_click (ours, via Jungle). 1.06s -- audition with F3
 }
 
 --- ⚠️ Looked up by name, not chosen by an `and/or` chain. The previous form was

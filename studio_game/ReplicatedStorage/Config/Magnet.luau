@@ -118,7 +118,10 @@ Magnet.FLOW = {
 	--- hardcoded 1.5/s would have stretched a full decay from 27 seconds to 200 -- a combo you
 	--- cannot lose, which is the thing decision 0018 says a combo must never be.
 	DECAY_TIERS_PER_SECOND = 0.1875, -- ~5.3s to lose one tier, unchanged from the original feel
-	COIN_MULTIPLIER = { 1.0, 1.15, 1.30, 1.50, 1.75, 2.25 }, -- index = tier + 1 (tier 0 = no flow)
+	--- 🔴 RENAMED from `COIN_MULTIPLIER`, because it no longer multiplies coins -- it multiplies
+	--- the SCRAP a pickup is worth. See `MagnetState.collect`. A constant whose name says one
+	--- quantity while it scales another is how a table becomes a lie (PITFALLS #52).
+	FLOW_MULTIPLIER = { 1.0, 1.15, 1.30, 1.50, 1.75, 2.25 }, -- index = tier + 1 (tier 0 = no flow)
 	PULL_SPEED_BONUS = { 1.0, 1.03, 1.06, 1.10, 1.15, 1.25 },
 	PITCH_PER_TIER = 0.06, -- collection sound pitch rise per tier
 }

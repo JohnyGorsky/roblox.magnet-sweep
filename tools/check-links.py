@@ -19,6 +19,11 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 def slugs_for(heading: str):
     h = re.sub(r"`([^`]*)`", r"\1", heading)
     h = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", h)
+    # NOTE: this strips `_` as markdown emphasis, which also eats the underscore inside a code
+    # identifier in a heading -- "### 16. `execute_luau` ..." slugs to "16-executeluau-...".
+    # GitHub keeps the underscore, so anchors to such headings differ between here and GitHub.
+    # Left as-is deliberately: existing links in the repo already use this form, and changing the
+    # rule would break them all at once. Match the tool, not GitHub, when writing an anchor.
     h = re.sub(r"[*_]", "", h)
     h = h.lower()
     h = "".join(c for c in h if unicodedata.category(c)[0] in "LNZ" or c in "-_ ")

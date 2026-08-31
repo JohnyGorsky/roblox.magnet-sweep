@@ -20,6 +20,8 @@ calls **the gate**.
 | **Kit** | ✅ 24 pieces / 83 parts, generated from spec, tiling verified by assembled corridor |
 | **Gameplay** | ✅ **The magnet.** Four-state scrap, pooled + capped, batched server grant, Flow → RUSH, Capacity → SCRAP FULL, Magnetic Drive, five VFX states |
 | **Sound** | ✅ **The game makes noise.** 14 Pro Sound Effects clips landed and verified in Play; `AudioBench` (F3) auditions candidates in the slot they will occupy. The one gap is the UI click |
+| **Boot** | ✅ **The game has an opening.** `ReplicatedFirst` handoff, a loading screen driven by four real conditions, the title card, and one line of tutorial that retires itself |
+| **Workshop** | ✅ **A lit hub with seven working-or-honest stations.** 425 parts from a spec in git; the Magnet Lab and Recycler are wired, the rest name the group they wait on |
 | **HUD** | ✅ **The game shows you what you are doing.** Coins, Flow ×1–×5 → RUSH, Scrap/Capacity, SCRAP FULL, banners, and a working upgrade panel. Measured on the phone preset (canvas **666×316**) and clear of Roblox's own thumbstick and jump button. ⚠️ The **desktop** arrangement is built but unverified |
 
 **What is NOT built:** the Workshop, the loading screen, zones 1–2, rare cargo and extraction,
@@ -42,7 +44,10 @@ every price.
 | **010** | Magnet VFX + sound | Five VFX states on one emitter. Its review found the Rush state **latched on forever** client-side, and that decision 0011's "code gate" was a comment pointing at an assertion that never existed |
 | **007** | Magnet core | Four states, pool, cap, batched grant. Reviewer found 6 criticals: abandoned pulls **bricked a magnet for the session**; a 16.2-stud grant gate against a 2.5-stud arrival |
 | **008** | Flow, RUSH, Capacity, Drive | All four stats real and upgradeable. A full magnet **spun the claim loop at 93% rejection**; Flow re-triggered RUSH forever |
-| **011** | Boot & HUD (the HUD half) | Coins, Flow, Scrap/Capacity, banners, upgrade panel, and a layout audit that ships. **Six defects in my own new code**, three of them checks that passed while measuring nothing — a disabled `ScreenGui` reporting 800x600 forever, `layout clean` against zero rectangles, and a `MinSize` silently overriding a computed height. Wired `RequestUpgrade` so coins buy something |
+| **014** | Boot & the loading screen | Real stage completion, not a timer — PLACE holds until there is **ground under the player's feet**. Three defects only a screenshot could find: an invisible progress bar, a 🪙 rendering as tofu, and a glyph vanishing at its dim transparency |
+| **013** | The stations work | Prompts on all seven; the Magnet Lab **reuses** job 011's upgrade panel rather than rebuilding it; the Recycler asks the economy's real question — Coins or robot HP, side by side, neither pre-selected — and banks +1,920 coins end to end. Wrote a PITFALLS #47 field annotation *after* reading #47 |
+| **012** | The Workshop room | 425 parts from a spec in git — seven coloured station machines, neon signage, hall lighting, a measured Arena sightline. **Built the lighting to a sentence in a doc instead of to the concept art beside it** and produced a black room. Independent review found 13 issues, 11 real — two dressing pieces landing through walls, and the plinth hiding the sign on all seven stations |
+| **011** | Boot & HUD (the HUD half) | Coins, Flow, Scrap/Capacity, banners, upgrade panel, and a layout audit that ships. **Six defects found while building, eleven more by the review** — including a modal that re-centred the scrap readout onto the thumbstick permanently, and a `hud.hide` that missed the banner and so invalidated its own decision-0018 check. Wired `RequestUpgrade` so coins buy something |
 | **009** | Quality tiers, repaired | Light cull **could never fire** (kit max 18 vs threshold 40); Low's PBR drop **undone by the server on every spawn** |
 
 
@@ -84,37 +89,42 @@ lesson, see [PITFALLS #45](PITFALLS.md#45-the-rendered-docs-site-misreports-depr
 
 ---
 
-## ▶️ START HERE — **group 05, the Workshop**
+## ▶️ START HERE — **group 07: zones 1–2**
 
-Job #011 is **done** ([summary](../Jobs/011/final-summary.md)). The HUD renders Coins, Magnet Flow,
-Scrap/Capacity, banners and an upgrade panel, measured and verified on the phone preset.
+Jobs #011–#014 are done. **The core loop is playable end to end**: the game boots with a real loading
+screen, teaches itself with one line of text, you sweep scrap, watch Coins and Flow on a HUD, walk
+into a lit Workshop, upgrade your magnet at the Magnet Lab and recycle scrap for Coins at the
+Recycler — which asks you the game's actual economic question.
 
-**Next: [build group 05](build/05-workshop.md).** Coins now buy magnet levels — job 011 wired
-`RequestUpgrade` for real rather than ship a dead button — so group 05 is *putting a physical
-building around a transaction that already works and has been attacked*, not inventing one.
-`magnet.recycle` is still a dev command standing in for the recycle bench.
+**Next: [build group 07](build/07-zones-1-2.md)** — both zones as self-contained streamable chunks,
+their scrap sets, the zone manager, and the 1→2 gate. The Factory Entrance station is already
+standing and already says `ZONE 1 OPENS IN GROUP 07`; it is waiting for exactly this.
 
-Read before starting: [PITFALLS](PITFALLS.md) (**58 entries** — #55–#58 are from job 011 and are all
-about measurements that returned a confident default), and `Ui/Layout.luau`, which is now the only
-place a screen is measured.
+Then **group 08 (rare cargo + escape)**, which is what the roadmap's gate question is really about.
+
+Read first: [PITFALLS](PITFALLS.md) — **61 entries**, and #55–#61 all came out of these four jobs.
+Most are one shape: *a measurement that returned a confident default, or a check that passed because
+it was measuring nothing.*
+
+⚠️ **The Workshop is GENERATED, not hand-placed** — `Workspace` does not sync, so the room lives in
+git as data ([0017](decisions/0017-the-kit-is-generated-from-a-spec.md)). It builds on Play. To see it
+in the **editor**, reopen the place first (Studio caches modules for a whole Edit session), then run
+`require(game.ServerScriptService.WorkshopBuilder).build()` — [#61](PITFALLS.md#61-a-generated-world-is-invisible-in-the-editor-and-the-editors-copy-goes-stale).
+Zones should follow the same pattern.
+
+⚠️ **`tools/luau-analyze.sh` exists.** Run it before any playtest — it caught a syntax error in three
+of the last four jobs, including a PITFALLS #47 field annotation written *after* reading #47.
 
 ## ▶️ The bigger picture
 
-After the Workshop: **group 08, rare cargo and escape** — which is what the gate question is actually
-about. It is the strange object worth stealing and the guardian chasing you home.
+🔴 **The most valuable action is still not code, and it is now fully answerable.** The gate asks:
+*when the player sees a strange object in the distance, do they think "I want that on my robot"?*
+Every ingredient exists — the pull, the sound, a HUD that shows what you are earning, a hub worth
+returning to, and a first-run experience. Ten minutes of playing it is worth more than the next three
+jobs, and it is explicitly not something Claude can sign off.
 
-🔴 **The most valuable next action is still not code.** The roadmap's gate asks: *when the player sees
-a strange object in the distance, do they think "I want that on my robot"?* — and its fix-list, in
-order, is **pull feel, sound, the break-free moment**. All three now exist, and as of job 011 your
-scrap, coins and Flow are finally visible while you judge them. Ten minutes of a human playing it is
-worth more than the next three jobs, and it is explicitly not something Claude can sign off.
-
-⚠️ **Do not tick build-group checkboxes as a way of tracking progress.** `tools/gen-build-manifest.py`
-rewrites those files and emits `- [ ]` unconditionally, so a tick is erased on the next run. Progress
-lives in `Jobs/`.
-
-⚠️ **`tools/luau-analyze.sh` now exists** (ported from Tide in job 011). Run it before any playtest —
-it catches syntax and type errors on disk in about a second, without Studio.
+⚠️ **Do not tick build-group checkboxes as progress.** `tools/gen-build-manifest.py` rewrites those
+files and emits `- [ ]` unconditionally. Progress lives in `Jobs/`.
 
 ---
 
@@ -127,7 +137,7 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 |---:|---|---|
 | 1 | **Commit the work** | Claude never commits. You committed twice mid-session; everything after `1a2c6a6` is uncommitted |
 | 2 | **Reopen the place in Studio** before the next publish | Its session reported `MaxPlayers = 60` after you set 12 on the web; publishing from a stale session could overwrite it |
-| 3 | **One sound id: `UI.Press`** — [assets/registry/sounds.md](../assets/registry/sounds.md) | The other 14 landed. **Every button in the game is silent** until this one does, and style §7 says silence reads as broken. Spec written, audition it with F3. The audio rule forbids me filling it with a guess |
+| 3 | ✅ **Done** — `UI.Press` landed from our own catalog (`89108158102227`, your Jungle upload). ⚠️ It is **1.06 s**, against a brief asking for ≤0.25 s — **audition it with F3**; if it rings, a shorter switch from the same set replaces it |
 | 4 | At [the gate](roadmap/mvp.md#the-gate), **judge whether the sweep feels good** | A *feel* question, played. Not something Claude can sign off. Everything needed to judge it now exists: the pull, the sound, and — since job 011 — a HUD that shows you what you are earning while you do it |
 | 5 | **One desktop Play session**: Test → Device → *off*, then Play | Job 011's layout has two arrangements and only the touch one is verified. The Device Emulator has **no scripting API** — I probed `StudioService`, `settings():GetService("Studio")`, `RunService` and `UserInputService` — so I cannot switch it off from here. One click settles it |
 

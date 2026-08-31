@@ -10,16 +10,16 @@ Sources: The Last Tide's 31 findings and its sea failure, Roblox Jungle's job re
 mobile rework, ELEVATOR 13's own pitfalls page, and `roblox.workspace/GROUND-RULES.md` §7 and §8 — which
 exist *because* of the Tide sea failure.
 
-**Entries 1-35, 42, 45-47 and 55-58 each cite a real, traceable incident.** Entries 36-41, 43 and 44 are
+**Entries 1-35, 42, 45-47 and 55-61 each cite a real, traceable incident.** Entries 36-41, 43 and 44 are
 **anticipatory** — they name a failure mode this game's design makes likely, not one already paid for.
 They are labelled where they appear.
 
 Part 6 was written *by* this repo's first independent review, which found seven wrong engine claims in
 the design pack it was reviewing.
 
-**Entries 55-58 are the freshest**, and all four came out of building one HUD (job 011). Three of them
-are the same shape: a measurement that returned a confident default, and a check that passed because it
-was measuring nothing.
+**Entries 55-60 are the freshest**, and all six came out of building one HUD (job 011) — four found by
+building it, two by the independent review that followed. Most are the same shape: a measurement that
+returned a confident default, and a check that passed because it was measuring nothing.
 
 MAGNET SWEEP starts with zero code. That is exactly when these are cheap to install, and exactly when
 they get skipped.
@@ -667,3 +667,72 @@ sizes it, or the layout that owns it must.
 `AbsoluteSize > 0` **and** `TextFits`. That is the screenshot turned into something that fails on
 its own, on every canvas — and it is the only one of these four that a rectangle audit could never
 have caught by looking at panels alone.
+### 59. "What is painted now" and "where the controls are" are different questions
+
+> **The incident.** Opening a modal sets `UserInputService.ModalEnabled = true`, which switches
+> Roblox's touch controls off — `TouchGui.Enabled` goes false. The layout re-ran while they were
+> off, `freeBottomSpan` saw no obstacles, concluded the **entire width was free**, and re-centred
+> the scrap readout on the canvas centre — x 333, the exact number the module exists to avoid.
+> Closing the modal restored the controls, but **nothing re-ran the layout**: `AbsoluteSize` had
+> not changed and `DescendantAdded` does not fire when Roblox merely flips `Enabled`. The readout
+> sat 23 px inside `DynamicThumbstickFrame` for the rest of the session.
+>
+> The shipped audit *did* log the collision on close. Nothing fixed it. **A checker that reports a
+> fault it cannot correct is not a safety net if the fault is permanent.**
+
+**Rule:** an **audit** asks *what is on the screen this frame*. A **layout** asks *where are the
+controls* — and a control that is temporarily hidden **has not moved**. Serve those from two
+functions, and never let "no rectangles" mean "the whole screen is free" on a touch device: return
+a `known` flag the caller cannot ignore, because before the controls exist those two states are
+indistinguishable and only one of them is safe to act on.
+
+**And:** anything that hides Roblox's controls must re-run the layout when it stops. `ModalEnabled`
+fires no signal you are listening to.
+
+**Check:** measure the element's rect, open and close the modal, measure again. The two numbers must
+be identical. A single reading taken before the modal ever opened proves nothing.
+
+### 60. A "hide the HUD" switch that misses a second `ScreenGui`
+
+> **The incident.** `dev("hud.hide")` existed so decision 0018 could be re-checked — *does the
+> magnet still teach `SCRAP FULL` with no HUD?* It set `Enabled = false` on the **Hud** ScreenGui.
+> The banner is a **separate** ScreenGui, so `SCRAP FULL` in 64 px capitals kept firing across the
+> middle of a "hidden" HUD. The experiment could no longer distinguish *the magnet taught me* from
+> *the banner told me* — the precise distinction it was built to test.
+>
+> The conclusion survived, because the real evidence was server-side and behavioural
+> (`react=177 pull=0`) and the screenshot happened to catch no banner. It survived by luck of
+> timing, not by design.
+
+**Rule:** a "hide the UI" control must own **every** `ScreenGui` the feature draws into, and a new
+screen added later must be added to it. The same applies to any audit that walks *one* GUI tree — the
+element it cannot see is the one that will be wrong.
+
+**Check:** flip the switch and enumerate `PlayerGui` for anything still `Enabled`. Do not check the
+one you remembered to write down.
+### 61. A generated world is invisible in the editor, and the editor's copy goes stale
+
+Two halves of one workflow trap, and the second is the nasty one.
+
+> **The incident.** `Workspace` does not sync, so the Workshop is generated from `WorkshopSpec` at
+> server start ([decision 0017](decisions/0017-the-kit-is-generated-from-a-spec.md)). Correct — and
+> the owner's immediate reaction was *"why do I see nothing in the editor?"* A hub a human has to
+> art-direct that cannot be looked at, selected or nudged without pressing Play is a real cost, and
+> nothing in the decision had weighed it.
+>
+> The obvious fix — run the builder once in the **Edit** datamodel, so the room exists as visible,
+> selectable instances — works. Then it silently stops working: **Studio caches a `require`d module
+> for the entire Edit session, and Studio Sync replacing the script's `Source` does NOT invalidate
+> it** ([#15](#15-a-failed-or-stale-require-is-cached-for-the-whole-edit-session)). Measured: after
+> six fixes had landed and been verified in Play, an Edit rebuild still produced the **pre-fix**
+> room — old aperture width, old sightline message, the label on the wrong part. Cloning the module
+> does not help either: its own `require`s resolve to the same cached dependency instances.
+
+**Rule:** generated geometry is authoritative in **Play**, and the editor copy is a convenience that
+is only as fresh as the Edit session. After changing a builder, either reopen the place before
+materialising into the editor, or **delete the editor copy** — a stale room reads as "the fix did not
+land" and costs more than an empty Workspace does.
+
+**Check:** put a version marker in the generated output — a changed log string, a part count, an
+attribute — and read it back after an editor build. If it matches the previous build after a change,
+you are looking at the cache, not at your code.

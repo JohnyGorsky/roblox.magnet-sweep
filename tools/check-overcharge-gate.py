@@ -33,6 +33,10 @@ ALLOWED = {
     "ServerScriptService/MagnetState.luau": "is MagnetState",
     "ServerScriptService/ScrapService.luau": "the magnet's own state machine: stats, active radius, isFull",
     "ServerScriptService/Bootstrap.server.luau": "starts it, and the dev commands",
+    # The Recycler is where scrap becomes Coins -- spec section 48's pinch. It reads carried scrap
+    # and grants Coins, which is the ECONOMY, not the Arena. It never touches Overcharge, the
+    # magnet's active radius, or anything a deployed robot could observe. Added job 013.
+    "ServerScriptService/StationService.luau": "the Recycler: scrap -> Coins, the economy pinch",
 }
 
 # Anything matching these is an Arena or robot path and may NEVER reference MagnetState,
@@ -56,15 +60,28 @@ def main() -> int:
             lines = path.read_text(encoding="utf-8").splitlines()
         except (UnicodeDecodeError, OSError):
             continue
-        # A mention inside a comment is not a call site. This is a line-leading heuristic --
-        # it does not track `--[[ ]]` blocks -- so it errs toward REPORTING (a reference on a
-        # line that also has code is still caught). Erring the other way would be a gate with
-        # a hole in it.
-        hits = [
-            (n, line.strip())
-            for n, line in enumerate(lines, 1)
-            if REFERENCE.search(line) and not line.lstrip().startswith("--")
-        ]
+        # A mention inside a comment is not a call site. Line-leading `--` was handled from the
+        # start; `--[[ ]]` BLOCKS were not, so a doc comment that correctly explained where a flag
+        # is set failed the gate. A check that cries wolf on prose is a check people stop reading.
+        #
+        # Still errs toward REPORTING: a reference on a line that also has code is caught, and the
+        # block tracker only suppresses lines wholly inside a block comment. Erring the other way
+        # would be a gate with a hole in it.
+        hits = []
+        in_block = False
+        for n, line in enumerate(lines, 1):
+            stripped = line.lstrip()
+            if not in_block and ("--[[" in line or "--[=[" in line):
+                # a block that opens and closes on one line is not a block
+                if "]]" not in line.split("--[[", 1)[-1]:
+                    in_block = True
+                continue
+            if in_block:
+                if "]]" in line or "]=]" in line:
+                    in_block = False
+                continue
+            if REFERENCE.search(line) and not stripped.startswith("--"):
+                hits.append((n, line.strip()))
         if not hits:
             continue
         if FORBIDDEN_NAMES.search(pathlib.Path(rel).name):

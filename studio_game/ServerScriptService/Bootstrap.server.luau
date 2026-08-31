@@ -300,6 +300,67 @@ for _, problem in ipairs(Vfx.audit()) do
 	Log.error("VFX %s", problem)
 end
 
+--------------------------------------------------------------------------------
+-- ⚠️ A PLACE SETTING NOBODY CAN PUT IN GIT.
+--
+-- `Lighting` does not sync (job 002), so the whole lighting recipe lives in the unversioned
+-- `.rbxl` and any of it can drift without a diff to show it. The one that matters most is the
+-- TIME OF DAY: the style skill's opening line is "a bright, glossy, slightly absurd toy factory
+-- **at night**", and the place shipped at `ClockTime` 14.5 -- mid-afternoon -- until job 012.
+--
+-- Seen, not reasoned: at 14.5 the neon signage washed out to almost nothing and the grated
+-- walkway blew to pure white, because metal under `EnvironmentSpecularScale = 1.0` was
+-- reflecting a bright blue midday sky. The art direction was silently not being followed.
+--
+-- This cannot FIX it -- it is a place setting a human owns. What it can do is refuse to let it
+-- drift silently, which is PITFALLS #33 (place settings nobody chose).
+--------------------------------------------------------------------------------
+
+do
+	local Lighting = game:GetService("Lighting")
+
+	-- 🔴 The values below come from the CONCEPT ART (`assets/concept_art/Arena.png`), not from a
+	-- phrase in a document. The written style skill says "a toy factory **at night**", and job 012
+	-- read that literally, set the place to ClockTime 1.5, and produced a black room. The painting
+	-- it was describing is a **brightly lit interior**: light-grey concrete floor, nothing in
+	-- shadow, saturated colour on the machines, neon reading as signage rather than as the only
+	-- light source. "At night" describes the world outside; the hall is lit.
+	--
+	-- ⚠️ `EnvironmentSpecularScale` was 1.00 and is the single biggest offender: polished metal
+	-- mirroring a bright sky blew the grated walkway out to pure white. 0.30 keeps the gloss and
+	-- loses the blowout.
+	local WANT = {
+		ClockTime = { 8, 17 }, -- daylight; the hall reads as lit, not as a cave
+		Brightness = { 1.5, 4.0 },
+		EnvironmentSpecularScale = { 0.15, 0.55 },
+	}
+	local readings = {
+		ClockTime = Lighting.ClockTime,
+		Brightness = Lighting.Brightness,
+		EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
+	}
+	local drift = {}
+	for name, range in pairs(WANT) do
+		local v = readings[name]
+		if v < range[1] or v > range[2] then
+			table.insert(drift, ("%s=%.2f (want %.2f..%.2f)"):format(name, v, range[1], range[2]))
+		end
+	end
+	-- Ambient must never be near-black, or shadowed geometry disappears instead of receding.
+	local a = Lighting.Ambient
+	if (a.R + a.G + a.B) / 3 < 0.15 then
+		table.insert(drift, ("Ambient is %s -- too dark; the concept art has nothing in black"):format(tostring(a)))
+	end
+
+	if #drift > 0 then
+		Log.warn("LIGHTING drifted from the concept art: %s. Lighting does not sync, so this is a place setting a human fixes in Studio.",
+			table.concat(drift, ", "))
+	else
+		Log.info("lighting: ClockTime %.1f, Brightness %.1f, EnvSpecular %.2f, Ambient %s",
+			readings.ClockTime, readings.Brightness, readings.EnvironmentSpecularScale, tostring(a))
+	end
+end
+
 -- ⚠️ Name the empty sound slots, every startup, one line each. The audio rule is that an
 -- empty slot must ANNOUNCE ITSELF -- a wrong sound is much harder to notice than a missing one,
 -- and a placeholder is how the wrong asset ships. A count ("9 sounds missing") is a number you
@@ -323,13 +384,148 @@ for _, player in ipairs(Players:GetPlayers()) do
 	player:SetAttribute("DevAuthorised", DevTools.isAuthorised(player))
 end
 
+--------------------------------------------------------------------------------
+-- The Workshop. Job 012.
+--
+-- ⚠️ Built BEFORE the scrap pool, because `WorkshopBuilder` rebuilds `ServerStorage.Kit` from
+-- `KitSpec` and anything already holding a reference into the old folder would be left pointing
+-- at a destroyed instance.
+--------------------------------------------------------------------------------
+
+do
+	local WorkshopBuilder = require(need(script.Parent, "WorkshopBuilder"))
+
+	--- ⚠️ Goes through the module Bootstrap already required, NOT a fresh `require`.
+	--- `execute_luau` runs in a separate Luau context and `require` there builds a SECOND copy of
+	--- a module with its own state (PITFALLS #16, #17) -- which for this module means a second
+	--- `kitRoot` pointing at a folder the first copy is about to destroy. A dev command is the
+	--- only honest way to exercise the real builder from outside.
+	DevTools.register("workshop.rebuild", "Rebuild the Workshop from the spec (also the idempotence test)", function()
+		local before = 0
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if d:IsA("BasePart") then before += 1 end
+		end
+		local built, parts, problems = WorkshopBuilder.build()
+		local after = 0
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if d:IsA("BasePart") then after += 1 end
+		end
+		if not built then
+			return false, ("refused: %s"):format(table.concat(problems, "; "))
+		end
+		--- 🔴 RE-ATTACH FIRST, REPORT SECOND.
+		---
+		--- The rebuild DESTROYS the station folders and every prompt hanging inside them. An
+		--- earlier version returned early when the build reported ANY problem -- a missing dressing
+		--- piece, a sign with no rim -- and so skipped this, leaving all seven stations with zero
+		--- prompts while the reply talked only about the sign. The room looked right and could not
+		--- be used.
+		---
+		--- Note the shape: the guard that fixed a silent-success bug created the next one. Doing
+		--- the work before deciding what to say removes the ordering question entirely.
+		local StationService = require(need(script.Parent, "StationService"))
+		local reattached, stationProblems = StationService.attachPrompts()
+		for _, sp in ipairs(stationProblems) do
+			table.insert(problems, sp)
+		end
+
+		--- ⚠️ Problems are reported on SUCCESS too, and NAMED. A build that succeeded with a
+		--- blocked sightline used to return a cheerful "rebuilt: 362 parts (idempotent: YES)".
+		--- Idempotent means the SECOND build leaves the world the same size as the first; a rebuild
+		--- that appends shows up here as a climbing number.
+		local summary = ("rebuilt: %d Workshop parts | workspace %d -> %d (idempotent: %s) | %d/%d prompts"):format(
+			parts, before, after, before == after and "YES" or "*** NO, THE WORLD GREW ***",
+			reattached, #require(need(ReplicatedStorage, "Workshop"):WaitForChild("WorkshopSpec")).STATIONS)
+		if #problems > 0 then
+			return true, ("%s | %d PROBLEM(S): %s"):format(summary, #problems, table.concat(problems, "; "))
+		end
+		return true, summary
+	end)
+
+	local root, parts, problems = WorkshopBuilder.build()
+	for _, p in ipairs(problems) do
+		Log.error("WORKSHOP %s", p)
+	end
+	--- 🔴 A BLOCKED SIGHTLINE IS FATAL IN STUDIO, not a log line.
+	---
+	--- `build()` returns a non-nil root when the geometry was placed but a check failed, and the
+	--- old test here was `if not root` -- so decision 0001's load-bearing check had no failing
+	--- path that reached a human. Any problem now stops a Studio session, for the same reason a
+	--- bad config does: it must not be playtested and mistaken for an art problem.
+	if not root or #problems > 0 then
+		-- Same stance as a bad config: in Studio this must not be playtested and mistaken for an
+		-- art problem. On a live server a room with a misplaced sign beats no room at all.
+		if RunService:IsStudio() then
+			error(("WORKSHOP FAILED: %d problem(s) -- see the errors above"):format(#problems), 0)
+		end
+	else
+		-- ⚠️ Stated against the budget, not on its own. "412 parts" is a number you scroll past;
+		-- "412 / 1800" is one you notice the day it is 1900.
+		Log.info("Workshop: %d parts of the %d-part in-view budget (%.0f%%)",
+			parts, Perf.BUDGET.MAX_PARTS_IN_VIEW, parts / Perf.BUDGET.MAX_PARTS_IN_VIEW * 100)
+		if parts > Perf.BUDGET.MAX_PARTS_IN_VIEW then
+			Log.error("the Workshop alone exceeds the whole in-view part budget -- a zone chunk still has to fit beside it")
+		end
+	end
+end
+
 MagnetState.start()
 ScrapService.init()
 ScrapService.start()
 
+--------------------------------------------------------------------------------
+-- The stations. Job 013 -- the Workshop stops being scenery.
+--------------------------------------------------------------------------------
+
+do
+	local StationService = require(need(script.Parent, "StationService"))
+
+	local attached, stationProblems = StationService.attachPrompts()
+	for _, p in ipairs(stationProblems) do
+		Log.error("STATIONS %s", p)
+	end
+	--- ⚠️ Against the DENOMINATOR. "stations: 5 prompt(s) attached" and "stations: 7" look equally
+	--- healthy in scrollback -- this file makes exactly that complaint about part counts twenty
+	--- lines earlier and then did not apply it here.
+	local WorkshopSpec = require(need(need(ReplicatedStorage, "Workshop"), "WorkshopSpec"))
+	local wanted = #WorkshopSpec.STATIONS
+	if attached < wanted then
+		Log.error("stations: only %d of %d prompts attached", attached, wanted)
+	else
+		Log.info("stations: %d/%d prompts attached", attached, wanted)
+	end
+
+	--- ⚠️ Bound even though it cannot succeed yet. `RequestRepair` refusing with a reason is a
+	--- different thing from `RequestRepair` being an unbound endpoint a prompt points at --
+	--- the second is a control that does nothing with no explanation (PITFALLS #29, #34).
+	RemoteBinder.bindFunction("RequestRepair", function(player: Player): (boolean, any)
+		local ok, reason = StationService.repair(player)
+		return ok, { reason = reason, preview = StationService.recyclePreview(player) }
+	end)
+
+	--- Quote AND commit on one remote, the same shape `RequestUpgrade` uses, so the numbers the
+	--- player is looking at are the numbers that get charged. `commit = nil` previews.
+	RemoteBinder.bindFunction("RequestRecycle", function(player: Player, commit: any): (boolean, any)
+		if commit ~= true then
+			return true, { reason = "preview", preview = StationService.recyclePreview(player) }
+		end
+		local ok, reason = StationService.recycle(player)
+		return ok, { reason = reason, preview = StationService.recyclePreview(player) }
+	end)
+
+	--- Rebuilding the room destroys the prompts with it, so they have to come back.
+	DevTools.register("stations.attach", "Re-attach the station prompts (after a workshop.rebuild)", function()
+		local n, problems = StationService.attachPrompts()
+		if #problems > 0 then
+			return false, ("%d attached, %d problem(s): %s"):format(n, #problems, table.concat(problems, "; "))
+		end
+		return true, ("%d prompt(s) attached"):format(n)
+	end)
+end
+
 RemoteBinder.bindEvent("ClaimScrap", function(player: Player, ids: any)
 	local accepted, value, reason = ScrapService.claim(player, ids)
-	local banked, coins, rushStarted = MagnetState.collect(player, value, #accepted)
+	local banked, rushStarted = MagnetState.collect(player, value, #accepted)
 	if rushStarted then
 		Remotes.getEvent("ScrapGranted"):FireClient(player, {}, 0, -1, {}, "MAGNET RUSH")
 	end
@@ -441,6 +637,15 @@ end)
 --- supposed to be carried by the magnet's own behaviour -- the pull stops while everything in
 --- range still rattles -- and the HUD is only a second voice. The only honest way to know that
 --- is still true is to turn the HUD off and go and fill up.
+--- ⚠️ Exists because the first-run hint was otherwise UNTESTABLE. `HasSwept` flips on the first
+--- collection, and the magnet collects faster than a script can move the character out of range --
+--- three attempts to observe the hint's positive branch all ended with the flag already set. A
+--- state you cannot restore is a state you cannot verify.
+DevTools.register("first.reset", "Clear HasSwept, so the MOVE NEAR SCRAP hint can be seen again", function(player)
+	player:SetAttribute("HasSwept", nil)
+	return true, "HasSwept cleared -- the first-run hint is eligible again"
+end)
+
 DevTools.register("hud.hide", "Hide/show the HUD, to check the magnet still teaches SCRAP FULL on its own", function(player)
 	local hidden = not (player:GetAttribute("HudHidden") == true)
 	player:SetAttribute("HudHidden", hidden)

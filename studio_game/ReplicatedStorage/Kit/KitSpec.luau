@@ -345,13 +345,80 @@ KitSpec.PIECES = {
 	{
 		id = "Sign_NeonSlab",
 		category = "Signage",
-		desc = "the station sign: slate housing, chrome bezel, neon panel, hazard plinth",
+		desc = "the station sign: slate housing, chrome bezel, DARK face with a glowing rim",
+		--- 🔴 The face is DARK and the rim GLOWS. Read off `assets/concept_art/Arena.png`, where
+		--- every station sign is a deep navy panel carrying white text inside a bright coloured
+		--- outline -- not a solid slab of colour.
+		---
+		--- The first version made the whole face neon, so each sign rendered as a flat rectangle
+		--- of saturated colour with barely-legible dark text on it. The station colour belongs in
+		--- the RIM, where it identifies the station without fighting the words.
 		parts = {
 			{ size = { 16, 5, 1.5 }, offset = { 0, 10, 0 }, surface = "SteelDark" },
 			{ size = { 16.6, 0.8, 1.8 }, offset = { 0, 12.2, 0 }, surface = "Chrome" },
 			{ size = { 16.6, 0.8, 1.8 }, offset = { 0, 7.8, 0 }, surface = "Chrome" },
-			{ size = { 14, 3, 0.4 }, offset = { 0, 10, 0.9 }, neon = true, color = P.ScreenCyan },
+			-- the glowing rim: a neon plate that shows only as a border behind the dark face
+			{ size = { 14.6, 4, 0.4 }, offset = { 0, 10, 0.85 }, neon = true, color = P.ScreenCyan,
+				light = { range = 20, brightness = 3 } },
+			-- the dark face the label is written on, standing proud of the rim
+			{ size = { 13.4, 3.1, 0.4 }, offset = { 0, 10, 1.0 }, surface = "SteelDark", color = P.FactoryDark },
 			{ size = { 16, 2, 2 }, offset = { 0, 6.5, 0 }, surface = "HazardStripe" },
+		},
+	},
+
+	{
+		id = "Station_Machine",
+		category = "Industrial",
+		desc = "the body of a station: painted housing, buttresses, a glowing recessed face",
+		--- The concept art's stations are BUILT MACHINES the size of a wall -- a painted housing
+		--- with a glowing recessed face, flanked by coloured buttresses, on a hazard-striped
+		--- plinth. An earlier version of the Workshop gave each station a bare platform and a sign
+		--- on poles, which read as a market stall rather than as a factory.
+		---
+		--- Neutral here, tinted per station by the Workshop: `Color` MULTIPLIES the ColorMap, so a
+		--- neutral map takes any accent (style skill §3).
+		parts = {
+			-- hazard plinth
+			{ size = { 22, 1.5, 8 }, offset = { 0, 0.75, 0 }, surface = "HazardStripe" },
+			-- main housing; tinted with the station's accent
+			{ size = { 20, 11, 6 }, offset = { 0, 7, 0 }, surface = "PaintedGloss" },
+			-- buttresses either side, same accent, glossier read
+			{ size = { 3.5, 12.5, 7.5 }, offset = { -10.5, 7.75, 0 }, surface = "PaintedGloss" },
+			{ size = { 3.5, 12.5, 7.5 }, offset = { 10.5, 7.75, 0 }, surface = "PaintedGloss" },
+			-- chrome frame around the face
+			{ size = { 14, 8, 0.5 }, offset = { 0, 7.5, 3.0 }, surface = "Chrome" },
+			-- the glowing recessed face, in the station's own signal colour
+			{ size = { 12.4, 6.6, 0.5 }, offset = { 0, 7.5, 3.2 }, neon = true, color = P.ScreenCyan,
+				light = { range = 24, brightness = 3 } },
+			-- chrome cap
+			{ size = { 22, 0.9, 8 }, offset = { 0, 13.8, 0 }, surface = "Chrome" },
+		},
+	},
+
+	-- ── LIGHTING ──────────────────────────────────────────────────────────────
+	{
+		id = "Light_Gantry",
+		category = "Signage",
+		desc = "overhead gantry lamp: slate hood, chrome bezel, warm downward panel",
+		--- ⚠️ Placed by hand, so no `tiles`. It hangs from a gantry or a wall head, and its
+		--- spacing is a LIGHTING decision made by the room, not a footprint that must abut.
+		parts = {
+			-- the hood, at the top of a 12-stud wall
+			{ size = { 6, 1, 3 }, offset = { 0, H - 0.5, 0 }, surface = "SteelDark" },
+			{ size = { 6.4, 0.4, 3.4 }, offset = { 0, H - 1.2, 0 }, surface = "Chrome" },
+			--- The emitter. `LampWarm` is deliberately a NEUTRAL indicator colour that carries no
+			--- signal meaning -- a hall lamp must not read as recycle-green or alarm-red, or the
+			--- colour language stops meaning anything (PITFALLS #39).
+			---
+			--- ⚠️ Range 40, MEASURED not guessed. At 26 a wall-mounted run lit the walls and left
+			--- the middle of a 104-stud hall black: the centre is 52 studs from any wall, twice
+			--- the range. 40 overlaps across the room with an interior run to fill it.
+			---
+			--- This raises `KitSpec.maxLightRange()` to 40, which Bootstrap asserts must stay
+			--- ABOVE every tier's `decorativeLightRange` (10 / 15) -- so the quality cull still
+			--- has room to fire, and in fact becomes far more meaningful than it was at 18.
+			{ size = { 5.2, 0.5, 2.2 }, offset = { 0, H - 1.6, 0 }, neon = true, color = P.LampWarm,
+				light = { range = 40, brightness = 4 } },
 		},
 	},
 

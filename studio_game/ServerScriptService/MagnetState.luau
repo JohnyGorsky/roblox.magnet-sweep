@@ -183,10 +183,12 @@ function MagnetState.flowTier(player: Player): number
 	return math.min(Magnet.FLOW.MAX_TIER, math.floor(e.flow / Magnet.FLOW.PICKUPS_PER_TIER))
 end
 
---- Coin multiplier for the tier currently held. The table is 1-indexed with tier 0 first, so
---- this is the one place that offset is written down.
-function MagnetState.coinMultiplier(player: Player): number
-	return Magnet.FLOW.COIN_MULTIPLIER[MagnetState.flowTier(player) + 1] or 1.0
+--- How much more a pickup is worth at the tier currently held. The table is 1-indexed with tier 0
+--- first, so this is the one place that offset is written down.
+---
+--- 🔴 It multiplies SCRAP, not Coins. See `collect`.
+function MagnetState.flowMultiplier(player: Player): number
+	return Magnet.FLOW.FLOW_MULTIPLIER[MagnetState.flowTier(player) + 1] or 1.0
 end
 
 --------------------------------------------------------------------------------
@@ -194,17 +196,31 @@ end
 --------------------------------------------------------------------------------
 
 --- Bank a granted batch. `count` objects worth `value` scrap between them.
---- Returns (scrap actually banked, coins earned, whether this started a MAGNET RUSH).
+--- Returns (scrap actually banked, whether this started a MAGNET RUSH).
 ---
 --- ⚠️ ScrapService has already validated the claim by the time this runs. This function's job
 --- is the ECONOMY, not the anti-cheat, and it must not be reachable from a remote directly.
-function MagnetState.collect(player: Player, value: number, count: number): (number, number, boolean)
+function MagnetState.collect(player: Player, value: number, count: number): (number, boolean)
 	local e = entryFor(player)
-	local banked = math.min(value, MagnetState.headroom(player))
-	e.scrap += banked
 
-	local coins = math.floor(banked * MagnetState.coinMultiplier(player))
-	e.coins += coins
+	--- 🔴 SWEEPING PAYS SCRAP. IT DOES NOT PAY COINS.
+	---
+	--- `docs/systems/economy` is unambiguous: Scrap comes from sweeping, **Coins come from
+	--- recycling**. This function used to do `e.coins += banked * multiplier` as well, which was
+	--- invisible while the Recycler did not exist -- job 013 lit the real Coin path and the game
+	--- was suddenly paying for the same scrap twice. Spec §48's exact worked example, 150 scrap ->
+	--- 3,600 Coins, came out as 3,750.
+	---
+	--- The second-order damage was worse than the 4 %: Flow's multiplier was applied to that
+	--- pickup grant, so a MAGNET RUSH -- the game's headline reward -- was multiplying about a
+	--- twenty-fifth of the payout. Moving the multiplier onto the SCRAP puts the whole Flow curve
+	--- back on the quantity that actually converts to Coins.
+	---
+	--- ⚠️ Multiplied BEFORE the headroom clamp, so a Rush fills the magnet faster and sends the
+	--- player to the Recycler sooner. That is the loop tightening, not a rounding detail.
+	local worth = math.floor(value * MagnetState.flowMultiplier(player) + 0.5)
+	local banked = math.min(worth, MagnetState.headroom(player))
+	e.scrap += banked
 
 	-- Flow counts PICKUPS, not scrap value: a rhythm of collection, not a rate of income.
 	-- Weighting it by value would make one heavy pipe worth five screws of combo and turn the
@@ -230,8 +246,23 @@ function MagnetState.collect(player: Player, value: number, count: number): (num
 		end
 	end
 
+	--- 🔴 THE FIRST-RUN FLAG, and it lives on the SERVER.
+	---
+	--- `docs/systems/boot` §9 teaches the loop environmentally: the player sees scrap shake, a
+	--- prompt says MOVE NEAR SCRAP, and the prompt's whole job is to disappear the moment they
+	--- actually sweep. So "have they swept?" is a fact about collection, and this is the one place
+	--- collection happens.
+	---
+	--- ⚠️ Per-session today. When profiles land in group 11 this attribute is written FROM the
+	--- profile at join and back to it here — the client already reads the attribute and nothing on
+	--- that side has to change. Putting it on the client instead would mean building the same
+	--- state twice and having them disagree across a rejoin.
+	if banked > 0 and player:GetAttribute("HasSwept") ~= true then
+		player:SetAttribute("HasSwept", true)
+	end
+
 	MagnetState.push(player)
-	return banked, coins, started
+	return banked, started
 end
 
 --- Empty the magnet into scrap. Returns what was banked. The Workshop's recycle bench (group

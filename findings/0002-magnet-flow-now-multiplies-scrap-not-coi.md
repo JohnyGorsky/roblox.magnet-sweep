@@ -1,0 +1,11 @@
+# FINDING 0002: Magnet Flow now multiplies SCRAP, not Coins - a balance change made to fix a double mint
+
+**Project:** `roblox.magnet-sweep`
+**Status:** open
+**Severity:** med
+**Created:** 2026-08-31 00:26:09
+
+**Symptom:** Job 013's independent review found that sweeping and recycling were BOTH minting Coins for the same scrap. MagnetState.collect did e.coins += banked * COIN_MULTIPLIER on every pickup, and StationService.recycle then paid scrap * 24 for that same scrap at the Recycler. Spec section 48's exact worked example - 150 scrap to 3,600 Coins - came out as 3,750. docs/systems/economy is unambiguous that Scrap comes from sweeping and Coins come from recycling, so the pickup grant was the undocumented one. It was invisible until job 013 lit the real Coin path. THE SECOND-ORDER DAMAGE WAS WORSE THAN THE 4 PERCENT: Flow's multiplier was applied to that pickup grant, so a MAGNET RUSH - the game's headline reward moment - was multiplying about a twenty-fifth of the payout. The entire Flow reward curve was applied to the wrong quantity. FIXED BY: collect() no longer mints Coins at all, and the multiplier now scales the SCRAP a pickup is worth, clamped to headroom afterwards. Magnet.FLOW.COIN_MULTIPLIER is renamed FLOW_MULTIPLIER and MagnetState.coinMultiplier to flowMultiplier, because a constant whose name says one quantity while it scales another is how a table becomes a lie. Verified in Play: sweeping 78 scrap now yields coins=0, and recycling 80 scrap at the Recycler pays exactly 1,920 which is 24 per scrap. WHY THIS IS A FINDING AND NOT JUST A FIX: the numbers are now correct against the spec, but WHERE Flow's bonus lands is a balance judgement I made alone. Multiplying scrap means a Rush fills the magnet faster and sends the player to the Recycler sooner, which tightens the loop and is arguably better than a straight income multiplier - but it also means Capacity is consumed faster during a Rush, which interacts with a paid upgrade track. Economy.TUNED is still false and nothing here has been playtested for feel. The alternative designs are: bank a Flow bonus separately and apply it at recycle time, or keep Flow as pure income and pay it on top of the recycle. This needs a human to play it.
+**Where:** _TODO: file / system_
+**Repro / notes:** _TODO_
+**Fix idea:** _TODO_

@@ -132,10 +132,143 @@ local function buildWalls(parent: Instance): (number, number)
 	for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
 		if place("Struct_Pillar", Vector3.new(c[1] * halfX, 0, c[2] * halfZ), 0, parent) then n += 1 end
 	end
-	if place("Struct_Pillar", Vector3.new(halfX, 0, (ap.from - 1) * T), 0, parent) then n += 1 end
-	if place("Struct_Pillar", Vector3.new(halfX, 0, (ap.to + 1) * T), 0, parent) then n += 1 end
+	-- ⚠️ At the gap EDGE, not at the centre of the neighbouring wall tile.
+	-- `(ap.from - 1) * T` is a tile centre, which sits 4 studs inside the adjacent wall panel --
+	-- measured by review at 36 studs^3 of pillar buried in wall, with the pillar's near face
+	-- stopping 2 studs short of the opening it was supposed to frame. The gap's real edges are at
+	-- `(ap.from * T) - T/2` and `(ap.to * T) + T/2`.
+	local gapMin = ap.from * T - T / 2
+	local gapMax = ap.to * T + T / 2
+	if place("Struct_Pillar", Vector3.new(halfX, 0, gapMin), 0, parent) then n += 1 end
+	if place("Struct_Pillar", Vector3.new(halfX, 0, gapMax), 0, parent) then n += 1 end
 
 	return n, skipped
+end
+
+--- The overhead lamp run. Four walls, three lamps each, minus any that would hang in the Arena
+--- aperture -- a lamp there would be floating in a hole in the wall.
+local function buildLamps(parent: Instance): (number, number)
+	local n, skipped = 0, 0
+	local halfX, halfZ = WorkshopSpec.HALF_X, WorkshopSpec.HALF_Z
+	local inset = WorkshopSpec.LAMP_INSET
+	local ap = WorkshopSpec.APERTURE
+
+	for _, t in ipairs(WorkshopSpec.LAMP_TILES) do
+		local along = t * T
+		-- north and south: the run is along X
+		if place(WorkshopSpec.LAMP_PIECE, Vector3.new(along, 0, -halfZ + inset), 0, parent) then n += 1 end
+		if place(WorkshopSpec.LAMP_PIECE, Vector3.new(along, 0, halfZ - inset), 180, parent) then n += 1 end
+		-- west: run along Z
+		if place(WorkshopSpec.LAMP_PIECE, Vector3.new(-halfX + inset, 0, along), 90, parent) then n += 1 end
+		-- east: the same, minus the aperture
+		if t >= ap.from and t <= ap.to then
+			skipped += 1
+		elseif place(WorkshopSpec.LAMP_PIECE, Vector3.new(halfX - inset, 0, along), 270, parent) then
+			n += 1
+		end
+	end
+
+	-- the interior run, over the floor the player walks on
+	for _, tile in ipairs(WorkshopSpec.INTERIOR_LAMP_TILES) do
+		if place(WorkshopSpec.LAMP_PIECE, Vector3.new(tile[1] * T, 0, tile[2] * T), 0, parent) then
+			n += 1
+		end
+	end
+	return n, skipped
+end
+
+--------------------------------------------------------------------------------
+-- The ground the room stands on.
+--------------------------------------------------------------------------------
+
+--- 🔴 Z-FIGHTING. Anything whose TOP surface is level with the floor plane and whose footprint
+--- overlaps the room is fighting the floor for every pixel.
+---
+--- **Measured:** the default `Baseplate` is 2048 x 2048 at y = -8 with a height of 16, so its top
+--- is at **exactly y = 0.000** — and every Workshop floor tile's top is at **exactly y = 0.000**.
+--- Gap: `0.0000` studs. Two coplanar surfaces give the GPU no way to decide which is in front, so
+--- it picks differently per pixel and per frame, and the floor visibly crawls and flickers.
+---
+--- ⚠️ An earlier version of this job's summary called that arrangement safe — "its top and the
+--- floor's top are both y = 0" — which is precisely backwards. Coplanar is the WORST case, not a
+--- clearance. The player reported the ground as "glitchy" and they were right.
+---
+--- This LOWERS the offender rather than deleting it: the Baseplate is the user's place content and
+--- the world outside the Workshop walls, so it keeps doing its job two studs down where it cannot
+--- fight anything. Deleting default place content is the user's call, not a build script's.
+local COPLANAR_EPSILON = 0.05
+local CLEARANCE = 2
+
+local function resolveGroundConflicts(): { string }
+	local fixed = {}
+	local halfX, halfZ = WorkshopSpec.HALF_X, WorkshopSpec.HALF_Z
+	local mine = workspace:FindFirstChild(WorkshopBuilder.FOLDER_NAME)
+
+	--- ⚠️ `GetDescendants`, not `GetChildren`. The Baseplate is a direct child in the stock
+	--- template, but many places wrap their ground in a Model or Folder -- and there the
+	--- z-fighting a player actually reported would have come straight back with no log line.
+	---
+	--- ⚠️ The ownership test compares against `mine` and TOLERATES nil. An earlier version wrote
+	--- `not d:IsDescendantOf(workspace:FindFirstChild("Workshop") or workspace)`, which can never
+	--- be false for a direct child of Workspace -- and if the folder were ever missing, the
+	--- `or workspace` fallback made it always-false and silently disabled the whole function.
+	for _, d in ipairs(workspace:GetDescendants()) do
+		--- 🔴 `Terrain` IS a `BasePart`, and so is a `SpawnLocation`.
+		---
+		--- Measured, on the first run of this function: it "resolved a ground conflict" by moving
+		--- **`Workspace.Terrain` down 128 studs**. Terrain's inherited `Position` is not a thing
+		--- you are supposed to write, and this function had just decided to write it -- on the
+		--- user's place, which is not in git. A `SpawnLocation` was lowered too, which is a spawn,
+		--- not ground; spawns are handled separately below.
+		---
+		--- `IsA("BasePart")` is a wider net than it reads as. This is the explicit list of what
+		--- this function is allowed to touch.
+		local isGround = d:IsA("BasePart")
+			and not d:IsA("Terrain")
+			and not d:IsA("SpawnLocation")
+			and not d:IsA("MeshPart") -- a decorative mesh at floor level is scenery, not ground
+		if isGround and not (mine and d:IsDescendantOf(mine)) then
+			--- Rotation-aware extent. Using raw `Size` is the exact mistake `KitBuilder.worldSize`
+			--- was written to fix; a rotated slab's footprint is not its Size.
+			local cf, size = d.CFrame, d.Size
+			local ex = math.abs(cf.RightVector.X) * size.X + math.abs(cf.UpVector.X) * size.Y + math.abs(cf.LookVector.X) * size.Z
+			local ez = math.abs(cf.RightVector.Z) * size.X + math.abs(cf.UpVector.Z) * size.Y + math.abs(cf.LookVector.Z) * size.Z
+			local top = cf.Position.Y + (math.abs(cf.RightVector.Y) * size.X + math.abs(cf.UpVector.Y) * size.Y + math.abs(cf.LookVector.Y) * size.Z) / 2
+			local overlaps = math.abs(cf.Position.X) - ex / 2 < halfX and math.abs(cf.Position.Z) - ez / 2 < halfZ
+
+			--- ⚠️ Catches a top ABOVE the floor too, not just level with it. A ground slab poking
+			--- 0.25 studs through the floor is worse than one exactly level, and the first version
+			--- -- `math.abs(top) < 0.05` -- ignored it while claiming to cover "anything whose top
+			--- surface is level with the floor plane".
+			if overlaps and top > -COPLANAR_EPSILON then
+				if d.Anchored then
+					local drop = CLEARANCE + top
+					d.Position -= Vector3.new(0, drop, 0)
+					table.insert(fixed, ("%s (top was y=%.3f, at or above the floor -- lowered %.1f studs)")
+						:format(d:GetFullName(), top, drop))
+				else
+					table.insert(fixed, ("%s is UNANCHORED and its top is y=%.3f -- left alone; moving it would fight physics")
+						:format(d:GetFullName(), top))
+				end
+			end
+		end
+	end
+
+	--- 🔴 D11: THERE MUST BE EXACTLY ONE SPAWN.
+	---
+	--- Workspace is not in git and the stock template ships a `SpawnLocation` at (0, 0.5, 0) --
+	--- inside this room. Roblox picks at RANDOM among neutral spawns, so the player might never
+	--- stand at `WorkshopSpec.SPAWN`, which is the only point the sightline is actually gated on.
+	--- Disabled rather than deleted: it is the user's place content.
+	for _, d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("SpawnLocation") and d.Name ~= "WorkshopSpawn" and d.Enabled then
+			d.Enabled = false
+			table.insert(fixed, ("%s disabled -- the Workshop owns the spawn, and Roblox picks at random between them")
+				:format(d:GetFullName()))
+		end
+	end
+
+	return fixed
 end
 
 --------------------------------------------------------------------------------
@@ -150,80 +283,169 @@ end
 --- Material is what the thing actually IS.
 local function dressSign(sign: Model, label: string, hex: string): boolean
 	local color = Color3.fromHex(hex)
-	local panel: BasePart? = nil
+
+	--- The glowing rim, found by MATERIAL rather than by index -- `KitBuilder` names parts by
+	--- child count, so an index is a position in a list a spec edit silently renumbers.
+	local rim: BasePart? = nil
 	for _, d in ipairs(sign:GetDescendants()) do
 		if d:IsA("BasePart") and d.Material == Enum.Material.Neon then
-			panel = d
+			rim = d
 			break
 		end
 	end
-	if not panel then
+	if not rim then
 		return false
 	end
-	panel.Color = color
-	for _, d in ipairs(panel:GetChildren()) do
+	rim.Color = color
+	for _, d in ipairs(rim:GetChildren()) do
 		if d:IsA("PointLight") then
 			d.Color = color
-			-- Style §4: decorative lights never cast. The budget is 8 shadow-casters visible at
-			-- once, and seven station signs would eat it on their own.
-			d.Shadows = false
+			d.Shadows = false -- decorative; the budget is 8 shadow-casters
 		end
+	end
+
+	--- 🔴 THE LABEL GOES ON THE FRONTMOST FACE, NOT ON THE NEON.
+	---
+	--- It used to go on the neon part, which was correct while the whole panel was neon. The sign
+	--- was then rebuilt to match the concept art -- a DARK face inside a GLOWING rim -- which put
+	--- the neon *behind* the face. The `SurfaceGui` went on with it, so every station's name was
+	--- rendered behind an opaque dark panel: seven signs reading as black rectangles.
+	---
+	--- So the face is chosen by GEOMETRY -- whichever part stands furthest forward along the
+	--- sign's own facing is the one the player looks at. That stays correct however the piece is
+	--- re-authored, which an index or a material test would not.
+	--- ⚠️ `PointToObjectSpace`, and the frontmost part is the one with the greatest local **+Z**.
+	---
+	--- 🔴 `CFrame.LookVector` is the **-Z** axis. An earlier version used it as "forward" and so
+	--- picked the part furthest BACK -- it put the label on the sign's housing instead of its
+	--- face. Worse, the check written to verify it used `LookVector` too, so the test agreed with
+	--- the bug and reported all seven signs clear (PITFALLS #2, again).
+	---
+	--- Working in the sign's own object space removes the axis question entirely: every offset in
+	--- `Sign_NeonSlab` is authored in +Z, so the largest local Z simply IS the visible face.
+	local pivot = sign:GetPivot()
+	local face: BasePart? = nil
+	local bestDepth = -math.huge
+	for _, d in ipairs(sign:GetDescendants()) do
+		if d:IsA("BasePart") then
+			local depth = pivot:PointToObjectSpace(d.Position).Z
+			if depth > bestDepth then
+				bestDepth, face = depth, d
+			end
+		end
+	end
+	if not face then
+		return false
 	end
 
 	local gui = Instance.new("SurfaceGui")
 	gui.Name = "Label"
-	-- The panel is offset +0.9 on Z from its housing, so the face the player sees is +Z, which
-	-- Roblox calls Back. (Front is -Z. This is the one that catches everyone.)
+	--- ⚠️ The face the player sees is the part's +Z, which Roblox calls **Back**. `Front` is -Z.
+	--- Verified against the built sign, not assumed.
 	gui.Face = Enum.NormalId.Back
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = 50
-	gui.LightInfluence = 0 -- it is a lit sign, not a painted one
-	gui.Parent = panel
+	gui.LightInfluence = 0 -- a lit sign, not a painted one
+	gui.Parent = face
 
 	local text = Instance.new("TextLabel")
+	text.Name = "Text"
 	text.Size = UDim2.fromScale(1, 1)
 	text.BackgroundTransparency = 1
 	text.Text = label
-	-- Bangers, the display face: all-caps station names are exactly what style §7 reserves it for.
+	-- Bangers, the display face: all-caps station names are what style §7 reserves it for.
 	text.FontFace = Font.new("rbxasset://fonts/families/Bangers.json", Enum.FontWeight.Regular)
-	text.TextColor3 = Color3.fromHex("#14161C") -- dark on a lit panel, so it reads as cut-out
+	--- White on the dark face, which is what the concept art does. The rim carries the station's
+	--- colour; the words stay legible.
+	text.TextColor3 = Color3.fromHex("#F2F6FA")
 	text.TextScaled = true
-	text.Parent = text.Parent or gui
 	text.Parent = gui
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color
+	stroke.Thickness = 2
+	stroke.Transparency = 0.35
+	stroke.Parent = text
+
 	return true
+end
+
+--- Tint the parts of a station machine that carry its accent, and light its face in its own
+--- signal colour.
+---
+--- ⚠️ Found by their stamped `MSSurface`, not by index. `KitBuilder` names parts by child count,
+--- so an index is a position in a list a spec edit silently renumbers -- and the builder already
+--- stamps the surface for the quality controller, so the marker exists and has a reader.
+local function dressMachine(machine: Model, signal: Color3, accent: Color3): boolean
+	local litFace = false
+	for _, d in ipairs(machine:GetDescendants()) do
+		if d:IsA("BasePart") then
+			if d.Material == Enum.Material.Neon then
+				d.Color = signal
+				for _, l in ipairs(d:GetChildren()) do
+					if l:IsA("PointLight") then
+						l.Color = signal
+						l.Shadows = false
+					end
+				end
+				litFace = true
+			elseif d:GetAttribute("MSSurface") == "PaintedGloss" then
+				-- `Color` MULTIPLIES the ColorMap, which is why the variant is authored neutral
+				d.Color = accent
+			end
+		end
+	end
+	return litFace
 end
 
 local function buildStations(parent: Instance): (number, { string })
 	local n, problems = 0, {}
 	for _, s in ipairs(WorkshopSpec.STATIONS) do
 		local centre = WorkshopSpec.stationPosition(s)
+		local rot = CFrame.Angles(0, math.rad(s.facing), 0)
+		--- Unit vector pointing INTO the room from this station. Every dressing offset is
+		--- expressed in this frame, so +Z in the table means "towards the player".
+		local fwd = rot:VectorToWorldSpace(Vector3.new(0, 0, 1))
+
 		local group = folder(s.id, parent)
 		group:SetAttribute("StationId", s.id)
 		group:SetAttribute("StationLabel", s.label)
 		group:SetAttribute("SignalColor", s.color)
-		-- ⚠️ The owner is stamped onto the instance, not only written in the spec. A station that
-		-- is still scenery is then visible in the Explorer, not only in a file nobody opens.
 		group:SetAttribute("Owner", s.owner)
 
-		local plinth = place("Struct_Platform", centre, s.facing, group)
-		if not plinth then
-			table.insert(problems, ("station %q: Struct_Platform is missing from the kit"):format(s.id))
+		local signal = Color3.fromHex(s.color)
+		local accent = Color3.fromHex(s.accent)
+
+		--- 🔴 A BUILT MACHINE, not a platform with a sign behind it.
+		---
+		--- The previous version placed a `Struct_Platform` at the station centre and the sign 8
+		--- studs BEHIND it. Independent review measured the result: the 16x16 deck cut through
+		--- the sign's own base on all seven stations, and from standing eye height the bottom of
+		--- the panel only cleared the deck from 151 studs away -- further than the room is wide.
+		--- Every station's sign was hidden behind its own plinth. It also read as a market stall
+		--- rather than as the wall-sized coloured machines in `assets/concept_art/Arena.png`.
+		local machine = place("Station_Machine", centre, s.facing, group)
+		if not machine then
+			table.insert(problems, ("station %q: Station_Machine is missing from the kit"):format(s.id))
+		elseif not dressMachine(machine, signal, accent) then
+			table.insert(problems, ("station %q: its machine has no Neon face to light"):format(s.id))
 		end
 
-		-- the sign stands just behind the plinth, against the wall it faces away from
-		local back = CFrame.Angles(0, math.rad(s.facing), 0):VectorToWorldSpace(Vector3.new(0, 0, -T * 1.5))
-		local sign = place("Sign_NeonSlab", centre + back, s.facing, group)
+		--- The sign is mounted ON the machine's upper front, above the glowing face -- which is
+		--- where the concept art puts it. Nothing stands between the player and the words.
+		local signPos = centre + fwd * 2 + Vector3.new(0, 6, 0)
+		local sign = place("Sign_NeonSlab", signPos, s.facing, group)
 		if not sign then
 			table.insert(problems, ("station %q: Sign_NeonSlab is missing from the kit"):format(s.id))
 		elseif not dressSign(sign, s.label, s.color) then
-			table.insert(problems, ("station %q: its sign has no Neon panel to light"):format(s.id))
+			table.insert(problems, ("station %q: its sign has no Neon rim to light"):format(s.id))
 		else
 			n += 1
 		end
 
 		for _, d in ipairs(s.dressing or {}) do
 			local offset = Vector3.new(d.offset[1], d.offset[2], d.offset[3])
-			local world = CFrame.Angles(0, math.rad(s.facing), 0):VectorToWorldSpace(offset)
+			local world = rot:VectorToWorldSpace(offset)
 			if not place(d.piece, centre + world, s.facing + (d.rot or 0), group) then
 				table.insert(problems, ("station %q: dressing piece %q is missing from the kit"):format(s.id, d.piece))
 			end
@@ -242,19 +464,53 @@ end
 --- gap rather than a `Wall_Window`: glass would stop the ray, and a sightline test that a pane of
 --- glass satisfies is not testing what decision 0001 claims.
 function WorkshopBuilder.sightline(): (boolean, string)
-	local from = WorkshopSpec.SPAWN + Vector3.new(0, WorkshopSpec.EYE, 0)
 	local to = WorkshopSpec.ARENA_ANCHOR
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { workspace:FindFirstChild("Terrain") :: Instance }
+	--- ⚠️ Terrain is NOT excluded any more. It was, and that was backwards: a hill between the
+	--- Workshop and the Arena is the single most likely real occluder of a 256-stud outdoor
+	--- sightline, and it was the one thing the filter removed.
+	params.FilterDescendantsInstances = {}
 	params.IgnoreWater = true
 
-	local hit = workspace:Raycast(from, to - from, params)
-	if not hit then
-		return true, ("clear: %0.f studs from the spawn to the Arena anchor"):format((to - from).Magnitude)
+	--- 🔴 SAMPLED ACROSS THE FLOOR, not from the one best point.
+	---
+	--- Spec §8, which decision 0001 quotes, asks for the Arena to be visible "from **much of** the
+	--- Workshop". The first version cast a single ray from the spawn -- and the spawn, the anchor
+	--- and the aperture all sit at z = 0, so the ray was aimed straight down the axis the gap was
+	--- cut on. It passed by construction. Independent review solved the real visibility region and
+	--- found it was **29.5 %** of the floor while the check reported "clear".
+	---
+	--- ⚠️ A second blind spot, and it is subtle: `KitBuilder` sets `CanQuery = false`, which
+	--- Roblox only honours on parts under 1 stud thick. So every sub-1-stud kit part -- a sign's
+	--- 0.4 neon panel, a gate's neon strip -- is INVISIBLE to a raycast. A sign whose only
+	--- intersecting part is its glowing face would read as clear. Everything >= 1 stud does block,
+	--- so the aperture test still has teeth; this is recorded because the gap is not obvious.
+	local clear, total = 0, 0
+	local step = KitSpec.TILE * 2
+	for x = -WorkshopSpec.HALF_X + step, WorkshopSpec.HALF_X - step, step do
+		for z = -WorkshopSpec.HALF_Z + step, WorkshopSpec.HALF_Z - step, step do
+			local from = Vector3.new(x, WorkshopSpec.EYE, z)
+			total += 1
+			if not workspace:Raycast(from, to - from, params) then
+				clear += 1
+			end
+		end
 	end
-	return false, ("BLOCKED by %s at %.0f studs -- decision 0001 requires the Arena to be visible from the Workshop")
-		:format(hit.Instance:GetFullName(), (hit.Position - from).Magnitude)
+
+	local pct = if total > 0 then clear / total * 100 else 0
+	--- "Much of the Workshop" is not a number anyone has written down, so this states the measured
+	--- fraction rather than inventing a threshold and calling it a pass. What it DOES gate is the
+	--- spawn: if the Arena is not visible from where the player arrives, decision 0001 is broken
+	--- outright rather than merely weak.
+	local spawnEye = WorkshopSpec.SPAWN + Vector3.new(0, WorkshopSpec.EYE, 0)
+	local spawnHit = workspace:Raycast(spawnEye, to - spawnEye, params)
+	if spawnHit then
+		return false, ("BLOCKED FROM THE SPAWN by %s at %.0f studs -- decision 0001 requires the Arena to be visible from the Workshop (%.0f%% of the floor has a view)")
+			:format(spawnHit.Instance:GetFullName(), (spawnHit.Position - spawnEye).Magnitude, pct)
+	end
+	return true, ("clear from the spawn; the Arena is visible from %.0f%% of the floor (%d of %d sample points)")
+		:format(pct, clear, total)
 end
 
 --------------------------------------------------------------------------------
@@ -295,6 +551,7 @@ function WorkshopBuilder.build(): (Folder?, number, { string })
 
 	local floorN = buildFloor(folder("Floor", root))
 	local wallN, skipped = buildWalls(folder("Shell", root))
+	local lampN, lampSkipped = buildLamps(folder("Lights", root))
 	local signN, stationProblems = buildStations(folder("Stations", root))
 	for _, p in ipairs(stationProblems) do
 		table.insert(problems, p)
@@ -318,8 +575,13 @@ function WorkshopBuilder.build(): (Folder?, number, { string })
 		end
 	end
 
-	Log.info("built: %d floor tiles, %d shell pieces (%d skipped for the Arena aperture), %d signs, %d parts",
-		floorN, wallN, skipped, signN, parts)
+	Log.info("built: %d floor tiles, %d shell pieces (%d skipped for the aperture), %d lamps (%d skipped), %d signs, %d parts",
+		floorN, wallN, skipped, lampN, lampSkipped, signN, parts)
+
+	-- ⚠️ AFTER the room exists, so the footprint test has something to test against.
+	for _, fix in ipairs(resolveGroundConflicts()) do
+		Log.warn("ground conflict resolved: %s", fix)
+	end
 
 	local clear, why = WorkshopBuilder.sightline()
 	if clear then

@@ -2,7 +2,9 @@
 
 **Project**: `roblox.magnet-sweep`
 **Created**: 2026-08-30 23:02:50
-**Status**: Requirements Gathering (intake)
+**Status**: ✅ **Complete** — see [final-summary.md](final-summary.md) and [changelog.md](changelog.md).
+Room built, lit and verified in Play; 11 real defects from the independent review fixed and
+re-verified. Stations are scenery until job 013.
 
 ## Requirements / goal
 
@@ -10,10 +12,10 @@ Build group 05's PHYSICAL half. The Workshop is the central safe hub and the pro
 
 ## Checklist
 
-- [ ] Requirements reviewed (this intake)
-- [ ] **Independent reviewer agent run** - given the symptom/requirement, NOT my theory (GROUND-RULES 8)
-- [ ] **Symptom reproduced in PLAY**, at the player's camera, before any fix (GROUND-RULES 7)
-- [ ] Implementation plan created & agreed
-- [ ] Implementation completed
-- [ ] **Proof it works better** captured - before/after from the same camera, in Play
-- [ ] Final summary + changelog written
+- [x] Requirements reviewed (this intake)
+- [x] **Independent reviewer agent run** - given the symptom/requirement, NOT my theory (GROUND-RULES 8)
+- [x] **Verified in PLAY**, at the player's camera, before any fix (GROUND-RULES 7)
+- [x] Implementation plan created & agreed
+- [x] Implementation completed
+- [x] **Proof it works** captured — screenshots at every stage, read as images - before/after from the same camera, in Play
+- [x] Final summary + changelog written

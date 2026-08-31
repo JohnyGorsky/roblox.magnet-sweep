@@ -104,14 +104,25 @@ with a strong musical note in it will sound wrong at tier 4.
 | `MAGNET.Rush` | surge swelling **upward**, ≤2.0s | no explosion, no impact | `9116279560` Lightning Flash 56 · 0.8s · *Electric - Arcs & Zaps*<br>`9116277827` Flash 30 · 0.9s · `9116275998` Flash 13 · 1.3s<br>⚠️ all three are "Searing, Crackle, **Hiss**" — a strike, not a swell. Closest available, not ideal |
 | `MAGNET.Full` | short dull thud, ≤0.6s | no error beep, no UI buzzer | `Metal - Hits`, smallest and deadest |
 
-## The interface — 🔴 **OPEN, added by job 011**
+## The interface — added by job 011, landed 2026-08-30
 
 One slot, and it is the only sound in the game allowed to sound like an interface. Every button goes
 through `Ui.Components.button`, so there is no second press sound and no path that forgets it.
 
 | Slot | Wanted | Must NOT have | Where to look |
 |---|---|---|---|
-| **`UI.Press`** 🔴 | a short, dry, **positive** click — a physical switch on a machine panel. ≤0.25s | **no musical note, no cartoon boop, no reverb tail.** It fires on every tap in the game, so any tail or pitch becomes a melody | `Toggle Switch, Industrial` — the same Pro Sound Effects set `FAMILY.Bolt` (`9120099101`) came from. Audition a **different** switch from it: the bolt *tik* and the button click must not be the same sound, or collecting and tapping become indistinguishable |
+| **`UI.Press`** ✅ **landed** | a short, dry, **positive** click — a physical switch on a machine panel. ≤0.25s | **no musical note, no cartoon boop, no reverb tail.** It fires on every tap in the game, so any tail or pitch becomes a melody | **`89108158102227`** `ui_mouse_click` — **our own upload**, already the UI click in Jungle (`UIClick.local.luau`) and listed in the shared registry. Verified loading in this place: `IsLoaded=true`, **1.06 s** |
+
+> ⚠️ **Landed from our own catalog, not sourced fresh — and it wants one listen.** The documented
+> order is *our inventory first, the Creator Store second*, and this was already in it: owned by
+> `johnygorsky10`, already moderated, already shipping as a UI click in another game here. That is
+> why it is not a placeholder.
+>
+> But its **`TimeLength` is 1.06 s** against a brief that asks for ≤0.25 s, so it may carry a tail
+> this slot forbids — a tail becomes a melody when it fires on every tap. **Audition it with F3.**
+> If it rings, the fix is a shorter clip from the same `Toggle Switch, Industrial` Pro Sound Effects
+> set `FAMILY.Bolt` came from — choosing a *different* switch from it, because the bolt *tik* and the
+> button click must not be the same sound or collecting and tapping stop being distinguishable.
 
 ⚠️ **`MAGNET.Full` is explicitly forbidden from sounding like a UI buzzer** because SCRAP FULL is a
 physical event. That rule is about the *world*, and it is why this group exists separately — without

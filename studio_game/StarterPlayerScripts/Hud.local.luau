@@ -55,6 +55,7 @@ local Theme = require(UiFolder:WaitForChild("Theme", 20))
 local Layout = require(UiFolder:WaitForChild("Layout", 20))
 local Components = require(UiFolder:WaitForChild("Components", 20))
 local Banner = require(UiFolder:WaitForChild("Banner", 20))
+local Screens = require(UiFolder:WaitForChild("Screens", 20))
 
 for _, problem in ipairs(Theme.audit()) do
 	Log.error("THEME %s", problem)
@@ -486,6 +487,26 @@ end
 --- fits the panel and clears the controls. Hiding them is the supported answer, and it is
 --- restored the moment the panel closes.
 function toggleUpgrade()
+	--- 🔴 REFUSE TO OPEN WHILE THE HUD IS HIDDEN.
+	---
+	--- `dev("hud.hide")` disables this ScreenGui. Opening the panel anyway sets
+	--- `upgradePanel.Visible = true` inside a DISABLED gui and `ModalEnabled = true` -- so on a
+	--- phone the thumbstick and jump button vanish, nothing is on screen, and the CLOSE button is
+	--- inside the disabled gui and cannot be tapped. The player is stuck.
+	if not upgradeOpen and not gui.Enabled then
+		return
+	end
+
+	--- ⚠️ Close every other screen first, and do it HERE rather than only at the station prompt.
+	--- The station handler called `closeAll` and this did not, so the Recycler modal plus a tap on
+	--- the HUD's own UPGRADE button left both open -- and closing the upgrade panel then set
+	--- `ModalEnabled = false` while the Recycler was still up, handing Roblox's touch controls back
+	--- underneath an open modal. That is verbatim the failure the station handler's comment claims
+	--- to have fixed; it had only covered one of the two entry points.
+	if not upgradeOpen then
+		Screens.closeAll()
+	end
+
 	upgradeOpen = not upgradeOpen
 	upgradePanel.Visible = upgradeOpen
 	UserInputService.ModalEnabled = upgradeOpen
@@ -507,6 +528,21 @@ function toggleUpgrade()
 	-- was `Visible = false` (mobile §4a.9). State coverage is part of the check, not a bonus.
 	auditLayout()
 end
+
+--- 🔴 REGISTERED, so the Workshop's Magnet Lab terminal can open THIS panel rather than build a
+--- second one. Job 011 measured and attacked this screen; a station that reimplemented it would be
+--- a second thing to keep correct, and the first time the two disagreed the player would be looking
+--- at one price and paying another.
+Screens.register("Upgrade", {
+	setOpen = function(open: boolean)
+		if open ~= upgradeOpen then
+			toggleUpgrade()
+		end
+	end,
+	isOpen = function(): boolean
+		return upgradeOpen
+	end,
+})
 
 --------------------------------------------------------------------------------
 -- Layout. Two arrangements, chosen from a MEASURED canvas.

@@ -104,7 +104,7 @@ it is [#2](../../docs/PITFALLS.md#2-a-verification-that-could-not-fail) and [#54
 - checks **every** `GuiButton` including transparent ones, and every on-screen text element for
   `AbsoluteSize > 0` and `TextFits`.
 
-Final reading, with the panel open and all four rows on screen:
+Reading with the panel **closed** — three persistent elements, against Roblox's five live rects:
 
 ```
 layout verified: 3 element(s) vs 5 reserved rect(s) -- canvas 666x316 | viewport 666x374 |
@@ -112,6 +112,22 @@ inset 58 | touch=true | tap=56px | ready=true | reserved: JumpButton[571..641,22
 DynamicThumbstickFrame[-100..266,105..416] DynamicThumbstickUIModifier[-100..266,105..416]
 ThumbstickStart[29..103,223..297] ThumbstickEnd[48..84,242..278]
 ```
+
+And with the panel **open** — eight elements, and the audit correctly refusing to claim a collision
+check it cannot make, because `ModalEnabled` has taken Roblox's controls off the screen:
+
+```
+layout: 8 element(s) clear the tap floor; COLLISIONS NOT CHECKED (no reserved rects) --
+canvas 666x316 | ... ready=false (touch device but TouchGui has no rects yet ...)
+```
+
+> ⚠️ **An earlier draft of this file printed the first block under the caption "with the panel open
+> and all four rows on screen". That caption was wrong** and the independent review caught it: with
+> the panel open the count is 8, not 3, and the collision line reads `COLLISIONS NOT CHECKED`. The
+> reading was real; the state I attributed it to was not. That is the shared `mobile` skill's §4a.9
+> — *measure in the state the problem was reported in* — committed in the write-up rather than in
+> the code. The row geometry was separately verified by direct measurement (all four rows at 47 px,
+> `visible`, none clipped), which is what actually supports the claim.
 
 ---
 
@@ -149,6 +165,17 @@ scrap.why   -> asked=33 granted=23 turned away=30.3% | ... FULL=1
 stops while everything in range still rattles* — as a measurement. The HUD is a second voice, not the
 signal. The screenshot shows scrap lying on the ground around a player with no UI at all.
 
+> 🔴 **The tool was weaker than I described it, and the review caught that too.** `dev("hud.hide")`
+> set `Enabled = false` on the **Hud** ScreenGui only. The banner is a *separate* ScreenGui, so
+> `SCRAP FULL` in 64 px capitals was still free to fire across the middle of a "hidden" HUD. That
+> does not merely weaken the experiment, it inverts it: it could no longer distinguish *the magnet
+> taught me* from *the banner told me*, which is the exact distinction decision 0018 is about.
+>
+> The conclusion survives, because the evidence above is **behavioural and server-side**
+> (`react=177 pull=0`) and the screenshot shows no banner. But the conclusion survived by luck of
+> timing rather than by design. `Banner.setEnabled` now goes down with the HUD, so the next person
+> to run this check is running the check they think they are running.
+
 ### The upgrade remote, attacked rather than trusted
 
 | Sent | Result |
@@ -161,6 +188,65 @@ signal. The screenshot shows scrap lying on the ground around a player with no U
 
 That fourth row is the one that matters: a client naming its own price changes nothing, because the
 server never reads one (decision 0007).
+
+---
+
+## The independent review — 13 findings, 11 real
+
+Run per [GROUND-RULES 8](../../../roblox.workspace/GROUND-RULES.md), given the requirement and the
+repo and **never my theory**. It found more than my own verification did, and two of its findings
+were errors in *this document* rather than in the code.
+
+### The two that would have shipped a broken HUD
+
+**🔴 The scrap readout was re-centred onto the thumbstick after every panel open.** A five-step
+chain I did not see: opening the panel sets `ModalEnabled`, which makes `TouchGui.Enabled` false, so
+`reserved()` correctly returns nothing → `freeBottomSpan` read "no obstacles" as "the whole width is
+free" → the readout was re-centred on **x 333, the exact number this module exists to avoid** →
+closing the panel restored the controls but *nothing re-ran the layout*, so it stayed 23 px inside
+`DynamicThumbstickFrame` for the rest of the session.
+
+My own audit **would have logged it** and nothing would have fixed it. Two fixes: `reservedForLayout`
+distinguishes *what is painted now* (an audit's question) from *where the controls are* (a layout's
+question, and a temporarily hidden control has not moved), and `freeBottomSpan` now returns a `known`
+flag that a caller cannot ignore. Re-measured after: `x 328..507` before opening, `x 328..507` after
+open-and-close, `overlaps a thumbstick rect: NO`.
+
+**🔴 `dev("hud.hide")` did not hide the banner**, so the decision-0018 check was weaker than I
+described it. See the correction in that section above.
+
+### The rest
+
+| # | Finding | Fix |
+|---|---|---|
+| 2 | **`Theme.audit()` could not fail.** `Font.new` stores the family string verbatim, so `Family == ""` is never true — the check returned empty for every input, *in the file whose header is about silent font substitution* | Verified in Studio: a bogus family constructs, applies, and reports itself back — **Roblox gives no runtime signal at all**. Now checked against a `VERIFIED_FAMILIES` list, which fails on a typo and says plainly what it cannot detect |
+| 7 | `math.max(80, width)` **defeated** the `band > 40` guard: any band of 41–96 px got an 80 px panel centred in it, overhanging the reserved rects both sides | The guard and the floor are now the same number |
+| 8 | The purchase banner **covered the row just tapped** (banner y 62..103, row 1 y 83..130) — and the audit could never see it, because it walked one ScreenGui | Confirmations moved into the panel header; the audit now walks **both** ScreenGuis |
+| 9 | A row tap was **silently swallowed** while a background re-quote was in flight — the button played its press tween and nothing happened. And an unguarded `InvokeServer` throw would latch the panel dead for the session | Purchases are never gated on a quote; the invoke is `pcall`ed |
+| 10 | The purchase confirmation ignored `decimals`: `MAGNETIC DRIVE -> 17.200000000000003` in a 64 px display banner | Formatted to the track's own precision. Re-measured: `MAGNETIC DRIVE -> 16.8`, `PULL RADIUS -> 12.4` |
+| 6 | `WATCHED.Flow` **looked like coverage and delivered none** — the panel is only visible during a combo, and every layout event happened while it was hidden | Audited on the visibility edge |
+| 11 | `MouseLeave` is not multi-touch capable (`mobile` §7) — a second finger sliding off a button would leave it visually pressed forever | Service-level `InputEnded`, filtered to this button's own `InputObject`s |
+| 12 | A comment asserted the punch "requires" a central anchor; **neither call site has one** | Comment corrected to describe what the code does |
+| 13 | Two hardcoded hexes inside RichText, duplicating `Theme` tokens — the one place a token cannot be passed as a `Color3` | Built from `Theme.color.*:ToHex()` |
+| 14 | Minor: the counter list grew forever · a dead `if not ev` guard on a function that errors · `magnet.stats` printed `radius=12` for 12.4 · a fractional Arena `holdSeconds` | All fixed |
+
+**Security: nothing found.** The reviewer attacked the upgrade path independently and reached the
+same conclusion my own probing did — no cost, level or stat crosses the wire, the price is recomputed
+from the server's own level, and there is no yield between the affordability check and the deduction.
+
+It also raised a **self-inflicted** rate-limit risk I had not considered: quotes and purchases share
+the `Economy` bucket, so a HUD re-quoting twice a second during a Rush could get the player's real
+purchase refused. `QUOTE_THROTTLE` is now 1.5 s — a price one second stale costs nothing; a refused
+purchase costs the sale.
+
+### The one I disproved
+
+The reviewer flagged `("tap=%dpx"):format(56.88)` as a runtime throw that would kill the audit — and
+noted, correctly, that my own quoted log line reading `tap=56px` could not coexist with that. It
+asked to have it verified rather than assumed. **Measured: Luau's `%d` truncates, it does not throw**
+(`string.format("%d", 56.88)` → `"56"`). Finding void, and the reviewer had said which evidence would
+void it. It did surface a real cosmetic bug next door, though — `magnet.stats` was truncating
+`radius=12.4` to `radius=12` in the very command used to verify an upgrade.
 
 ---
 
