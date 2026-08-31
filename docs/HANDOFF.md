@@ -1,6 +1,6 @@
 # Handoff — where we left off
 
-**Snapshot: 2026-08-30, end of session.** Read this, then [PITFALLS.md](PITFALLS.md), then
+**Snapshot: 2026-08-31, end of session.** Read this, then [PITFALLS.md](PITFALLS.md), then
 [build/README.md](build/README.md).
 
 ## 🧲 Where the game actually is
@@ -14,18 +14,27 @@ calls **the gate**.
 | **Design** | ✅ Complete. The 87-section spec redistributed into `docs/`, with a coverage table |
 | **Task list** | ✅ Complete. 14 groups, 582 items, sequenced into jobs |
 | **Place** | ✅ Live. `111667188608192`, universe `10764307230`. `StreamingEnabled` on, `MaxPlayers` 12, `LightingStyle` Realistic |
-| **Sync** | ✅ Connected and **VERIFIED** — flat layout, 6 synced service folders (job 002) |
-| **Code** | ✅ 30 modules — 19 ReplicatedStorage (incl. the 4-module `Ui/` layer), 6 ServerScriptService, 5 StarterPlayerScripts. **`tools/luau-analyze.sh` now checks all of it on disk in ~1s** |
-| **Assets** | ✅ 32 PBR maps for 8 `MaterialVariant`s · ✅ 14 of 15 sound slots landed — 🔴 **`UI.Press` is open**, so every button is silent |
-| **Kit** | ✅ 24 pieces / 83 parts, generated from spec, tiling verified by assembled corridor |
+| **Sync** | ✅ Connected and **VERIFIED BOTH WAYS** — flat layout, 6 synced service folders (job 002). ⚠️ It DROPPED silently on a PC restart, 2026-08-31. To check: write a throwaway `.luau` into a synced folder and read the DataModel back; delete it and confirm the instance goes ([#11](PITFALLS.md#11-reopening-a-place-silently-drops-the-sync-connection)) |
+| **Magnet** | ✅ **A hero mesh, not three boxes** (job 016). `ReplicatedStorage.MagnetMesh`, cloned per character, poles forward. ⚠️ It lives in the `.rbxl` and NOT in git — a script cannot texture a mesh ([#63](PITFALLS.md)) — so `Assets/registry/meshes.md` is the only record of its five asset ids outside the place |
+| **Code** | ✅ **38 scripts** — 21 ReplicatedStorage (incl. the 5-module `Ui/` layer and `Workshop/`), 8 ServerScriptService, 8 StarterPlayerScripts, 1 ReplicatedFirst. **`tools/luau-analyze.sh` checks all of it on disk in ~1s — run it before any playtest** |
+| **Assets** | ✅ 32 PBR maps for 8 `MaterialVariant`s · ✅ **all 15 sound slots landed.** ⚠️ `UI.Press` is 1.06 s against a brief asking ≤0.25 s — **audition it with F3**; if it rings, swap a shorter switch from the same set |
+| **Kit** | ✅ **27 pieces**, generated from spec, tiling verified. Job 012 added `Light_Gantry` and `Station_Machine`, and rebuilt `Sign_NeonSlab` (dark face + glowing rim, per the concept art) |
 | **Gameplay** | ✅ **The magnet.** Four-state scrap, pooled + capped, batched server grant, Flow → RUSH, Capacity → SCRAP FULL, Magnetic Drive, five VFX states |
-| **Sound** | ✅ **The game makes noise.** 14 Pro Sound Effects clips landed and verified in Play; `AudioBench` (F3) auditions candidates in the slot they will occupy. The one gap is the UI click |
-| **Boot** | ✅ **The game has an opening.** `ReplicatedFirst` handoff, a loading screen driven by four real conditions, the title card, and one line of tutorial that retires itself |
+| **Sound** | ✅ **The game makes noise.** 15 slots filled and verified in Play; `AudioBench` (F3) auditions a candidate in the slot it will occupy. ⚠️ Two licences in `SoundKit.LANDED`: 14 are Pro Sound Effects (Roblox-only), `UI.Press` is the owner's own upload |
+| **Boot** | ✅ **The game has an opening, and it has art.** `ReplicatedFirst` handoff, four real load conditions, the title card, one line of tutorial that retires itself — and job 015's live `ViewportFrame` diorama: the magnet, a corridor, a robot, the player, and scrap that flies in per completed stage. **The last P0 is closed** |
 | **Workshop** | ✅ **A lit hub with seven working-or-honest stations.** 425 parts from a spec in git; the Magnet Lab and Recycler are wired, the rest name the group they wait on |
-| **HUD** | ✅ **The game shows you what you are doing.** Coins, Flow ×1–×5 → RUSH, Scrap/Capacity, SCRAP FULL, banners, and a working upgrade panel. Measured on the phone preset (canvas **666×316**) and clear of Roblox's own thumbstick and jump button. ⚠️ The **desktop** arrangement is built but unverified |
+| **HUD** | ✅ **The game shows you what you are doing.** Coins, Flow ×1–×5 → RUSH, Scrap/Capacity, SCRAP FULL, banners, and a working upgrade panel. Measured on the phone preset (canvas **666×316**) and clear of Roblox's own thumbstick and jump button. ✅ The **desktop** arrangement is now verified too (canvas 1825×1255, `touch=false`, layout clean) |
 
-**What is NOT built:** the Workshop, the loading screen, zones 1–2, rare cargo and extraction,
-guardians, the robot, the Arena, persistence, the Factory Refresh. Groups 05, 06's boot half, 07–12.
+**What is NOT built:** zones 1–2, rare cargo and extraction, guardians, the robot, the Arena,
+persistence, the Factory Refresh. **Groups 07–12.** Groups 04, 05 and 06 are done.
+
+✅ **The P0 that was knowingly skipped is done (job 015).** §7 wanted the player, a magnet, flying
+scrap, a robot and a corridor — all five are there, built from primitives in a `ViewportFrame`, with
+a 2D halo painted behind it. The `ART MISSING` warn is gone, replaced by a guard that counts what
+actually got built and **was proven able to fire**. The four emoji are retired.
+
+🔴 **Still not verified: the phone preset.** The Device Emulator has no scripting API. Desktop is
+measured; phone is reasoned about. See *Waiting on you*.
 
 **Coins now buy something** — job 011 wired `RequestUpgrade` rather than ship a dead button, so
 Magnet Power, Pull Radius, Capacity and Magnetic Drive are all purchasable and the server recomputes
@@ -48,13 +57,35 @@ every price.
 | **013** | The stations work | Prompts on all seven; the Magnet Lab **reuses** job 011's upgrade panel rather than rebuilding it; the Recycler asks the economy's real question — Coins or robot HP, side by side, neither pre-selected — and banks +1,920 coins end to end. Wrote a PITFALLS #47 field annotation *after* reading #47 |
 | **012** | The Workshop room | 425 parts from a spec in git — seven coloured station machines, neon signage, hall lighting, a measured Arena sightline. **Built the lighting to a sentence in a doc instead of to the concept art beside it** and produced a black room. Independent review found 13 issues, 11 real — two dressing pieces landing through walls, and the plinth hiding the sign on all seven stations |
 | **011** | Boot & HUD (the HUD half) | Coins, Flow, Scrap/Capacity, banners, upgrade panel, and a layout audit that ships. **Six defects found while building, eleven more by the review** — including a modal that re-centred the scrap readout onto the thumbstick permanently, and a `hud.hide` that missed the banner and so invalidated its own decision-0018 check. Wired `RequestUpgrade` so coins buy something |
+| **016** | The magnet becomes a real object | The player's hero prop was three welded boxes. Now it is the key-art horseshoe — red + cyan, chrome pole shoes — pointing where the player looks. **Two owner corrections: it was upside down (a horseshoe pulls with its OPEN end), and I had generated from the wrong reference entirely** — `Robot.png`'s crane-mounted magnet instead of `Logo2.png`, the game's own key art, which was already in the repo and which I had never opened. Found [PITFALLS #63](PITFALLS.md): a script cannot write `SurfaceAppearance` maps, and the command bar says it can |
+| **015** | The loading screen gets its art | A live `ViewportFrame` diorama instead of a flat image, because §7 asks the screen to *feel interactive* and a picture cannot. **A probe measured, before any art existed, that a ViewportFrame renders no Bloom, no `Beam` and no `ParticleEmitter`** — so the glow is painted in 2D behind a transparent viewport. Found the 🪙 coin still rendering as tofu (`finding 0003`), contradicting job 014's summary: `FontFace` cannot add a codepoint no font contains. Six composition passes; three of them read as a doorway |
 | **009** | Quality tiers, repaired | Light cull **could never fire** (kit max 18 vs threshold 40); Low's PBR drop **undone by the server on every spawn** |
 
 
-**Pattern worth noting:** every job so far has had a real defect found by review or by running it, and
-several were things I had already reported to you as working. Job 006 was reported complete and its
-review, run three jobs later, found that three of the four things a quality tier is supposed to change
-did nothing at all.
+**Pattern worth noting, and it has not broken once in fourteen jobs:** every job has had a real
+defect found by review or by running it, and several were things already reported to the owner as
+working. Job 006 was reported complete and its review, three jobs later, found that three of the four
+things a quality tier is supposed to change did nothing at all.
+
+**The four jobs of 2026-08-31 held the pattern and sharpened it.** Roughly 60 review findings across
+011–014. The two worst were not in new code at all:
+
+- **Sweeping and recycling both minted Coins for the same scrap.** Invisible for six jobs, because the
+  Recycler did not exist to be the second mint. Spec §48's exact 3,600 came out as 3,750 — and worse,
+  Flow's multiplier sat on the pickup grant, so a **MAGNET RUSH was multiplying ~1/25th of the payout.**
+- **`RequestRecycle` had no server-side proximity check.** The only thing tying recycling to the
+  Recycler was a `ProximityPrompt` firing in a LocalScript. `Capacity` is a *paid* upgrade whose whole
+  value is how far you can sweep before walking back — remote cash-out made it worthless.
+
+**The recurring shape, now seven PITFALLS entries deep (#55–#61), with #62 added by job 015:** *a measurement that returned a
+confident default, or a check that passed because it was measuring nothing.* A disabled `ScreenGui`
+reporting 800×600 forever. `layout clean` against zero rectangles. A validator asking whether an
+offset divided by 4 instead of where the piece landed. A sightline aimed down the one axis the gap was
+cut on. `Theme.audit()` structurally incapable of failing. A boot stage that was `return true`.
+
+**And twice this session a CHECK agreed with the bug it was written to catch** — because both used the
+same wrong assumption. `CFrame.LookVector` is −Z, and the verification used it too. Write the check
+from the other direction.
 
 ## 🎨 The four decisions you made at intake
 
@@ -91,7 +122,7 @@ lesson, see [PITFALLS #45](PITFALLS.md#45-the-rendered-docs-site-misreports-depr
 
 ## ▶️ START HERE — **group 07: zones 1–2**
 
-Jobs #011–#014 are done. **The core loop is playable end to end**: the game boots with a real loading
+Jobs #011–#015 are done. **The core loop is playable end to end**: the game boots with a real loading
 screen, teaches itself with one line of text, you sweep scrap, watch Coins and Flow on a HUD, walk
 into a lit Workshop, upgrade your magnet at the Magnet Lab and recycle scrap for Coins at the
 Recycler — which asks you the game's actual economic question.
@@ -102,7 +133,7 @@ standing and already says `ZONE 1 OPENS IN GROUP 07`; it is waiting for exactly 
 
 Then **group 08 (rare cargo + escape)**, which is what the roadmap's gate question is really about.
 
-Read first: [PITFALLS](PITFALLS.md) — **61 entries**, and #55–#61 all came out of these four jobs.
+Read first: [PITFALLS](PITFALLS.md) — **62 entries**. #55–#61 came out of jobs 011–014; **#62** is job 015's, and it is an engine constraint worth knowing before any UI work: *a `ViewportFrame` has no Bloom, no `Beam` and no `ParticleEmitter`.*
 Most are one shape: *a measurement that returned a confident default, or a check that passed because
 it was measuring nothing.*
 
@@ -135,11 +166,41 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 
 | # | What | Why it needs you |
 |---:|---|---|
-| 1 | **Commit the work** | Claude never commits. You committed twice mid-session; everything after `1a2c6a6` is uncommitted |
-| 2 | **Reopen the place in Studio** before the next publish | Its session reported `MaxPlayers = 60` after you set 12 on the web; publishing from a stale session could overwrite it |
-| 3 | ✅ **Done** — `UI.Press` landed from our own catalog (`89108158102227`, your Jungle upload). ⚠️ It is **1.06 s**, against a brief asking for ≤0.25 s — **audition it with F3**; if it rings, a shorter switch from the same set replaces it |
-| 4 | At [the gate](roadmap/mvp.md#the-gate), **judge whether the sweep feels good** | A *feel* question, played. Not something Claude can sign off. Everything needed to judge it now exists: the pull, the sound, and — since job 011 — a HUD that shows you what you are earning while you do it |
-| 5 | **One desktop Play session**: Test → Device → *off*, then Play | Job 011's layout has two arrangements and only the touch one is verified. The Device Emulator has **no scripting API** — I probed `StudioService`, `settings():GetService("Studio")`, `RunService` and `UserInputService` — so I cannot switch it off from here. One click settles it |
+| 0 | **A commit** — job 015 (`BootScreen`, PITFALLS #62, `Jobs/015/`, `findings/0003`), plus the still-pending deletion of `studio_game/ReplicatedStorage/SyncProbe.luau` | ⚠️ The SyncProbe was a throwaway used to test that sync had reconnected; it got swept into `de43055` before being deleted. Removing it is correct — it was never game code |
+| 1 | **Audition `UI.Press` with F3** — `89108158102227`, your own Jungle upload | It is **1.06 s** against a brief asking ≤0.25 s. If it rings, a shorter switch from the same `Toggle Switch, Industrial` set replaces it. It fires on *every tap in the game*, so a tail becomes a melody |
+| 2 | At [the gate](roadmap/mvp.md#the-gate), **judge whether the sweep feels good** | A *feel* question, played, and the roadmap gates everything after zone 2 on it. Every ingredient now exists: the pull, the sound, a HUD showing what you earn, a hub worth returning to, and a first-run experience |
+| 3 | **Confirm [finding 0002](../findings/0002-magnet-flow-now-multiplies-scrap-not-coi.md)** — Magnet Flow now multiplies **scrap**, not Coins | Fixing the double mint was unambiguous; **where Flow's bonus lands is a balance call Claude made alone.** A Rush now fills the magnet faster instead of paying more per pickup, which interacts with the paid Capacity track. `Economy.TUNED` is still false |
+| 4 | **The Workshop half of the concept-art gap** — the loading screen half is done | Still a blockout: no ceiling, no conveyors, no floor arrows, and the machines are simpler than `assets/concept_art/Arena.png`. 🔴 **This half is parts work for `KitSpec`, not Meshy** — style §3 is parts-first and §5 names conveyors, floor arrows and crates as kit pieces. Job 015 established that; do not re-litigate it |
+| 5 | ✅ **DONE — the phone pass ran** (owner flipped the emulator, 2026-08-31). Found and fixed a 3 px magnet/tagline overlap that existed on **desktop too**; confirmed the halo stays circular; hero mesh costs **+0.31 ms**, below the noise floor. **The HUD's layout audit ran against 5 real reserved rects for the first time and passed** — on desktop it had always had 0 rects to collide with | Nothing outstanding. The one caveat: Studio is pinned at 67 ms/frame regardless, so "no measurable cost" is not "free on real hardware" |
+| 6 | **Reopen the place before the next publish** | An earlier session reported `MaxPlayers = 60` after you set 12 on the web; publishing from a stale session could overwrite it |
+
+---
+
+## ⚠️ One process deviation, 2026-08-31
+
+`CLAUDE.md` sets the job lifecycle as **intake → implementation-plan → summary + changelog**.
+**Jobs 013 and 014 have no `implementation-plan.md`** — 011 and 012 do. They went straight from
+intake to building because the intakes were unusually specific and the work was a continuation of the
+job before.
+
+It is recorded rather than back-filled: writing a plan *after* the fact is paperwork, not planning,
+and it would misrepresent how the work actually went. Worth reinstating for group 07, which is bigger
+and less obvious than either of those.
+
+---
+
+## 🖥️ Environment state, 2026-08-31
+
+Things a fresh session cannot discover by reading code.
+
+| | |
+|---|---|
+| **Studio** | Open on the right place. **Restarted mid-session (PC reboot).** The place WAS saved first — the lighting and all four jobs' code survived |
+| **Studio Sync** | Dropped silently on the restart, then reconnected and **verified in both directions**. If anything looks stale, suspect this first ([#11](PITFALLS.md#11-reopening-a-place-silently-drops-the-sync-connection)) |
+| **Device Emulator** | Was ON (phone preset) for most of the session, then switched OFF by the owner — which is how the desktop layout finally got verified. It has **no scripting API**; ask the owner to flip it |
+| **Lighting** | Saved into the place: ClockTime **14**, Brightness 2.5, Ambient 70/76/90, `EnvironmentSpecularScale` **0.30**. Bootstrap asserts these and warns on drift, because `Lighting` does not sync |
+| **Meshy MCP** | ✅ **CONNECTED and unused.** Job 015 was going to spend ~27 credits on 2D key art; the owner redirected to in-engine and **nothing was spent — balance still 1,240**. Meshy stays for hero *meshes* (style §3), not for screens. First connected 2026-08-31 (later session). It had failed with `CONNECT_TIMEOUT` earlier the same day; it came up on its own on the next start. Balance read back: **1,240 credits**. The owner has granted use of it and said not to worry about credits |
+| **Studio's own AI** | `generate_mesh`, `generate_procedural_model` and `generate_material` ARE available. Different pipeline (no rigging, no remesh→retexture chain) but fine for static dressing and the loading-screen art |
 
 ---
 

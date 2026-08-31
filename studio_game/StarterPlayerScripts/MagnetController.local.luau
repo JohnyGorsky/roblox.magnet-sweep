@@ -57,6 +57,57 @@ local ATTR_STATE = "ScrapState"
 
 local magnetRoot: BasePart? = nil
 
+--------------------------------------------------------------------------------
+-- The hero mesh.
+--------------------------------------------------------------------------------
+
+--- 🔴 CLONED FROM AN EDIT-TIME TEMPLATE, and there is no alternative. This was first written to
+--- build the part at runtime -- `AssetService:CreateMeshPartAsync` plus a `SurfaceAppearance`
+--- assembled from four asset ids in `Config.Magnet.MESH` -- so that the only thing in the place
+--- would be an id in git. **That is impossible**, and the reason is worth knowing:
+---
+---     The current thread cannot write 'ColorMap' (lacking capability Plugin)
+---
+--- A script cannot write **any** `SurfaceAppearance` map. `CreateMeshPartAsync` itself works fine
+--- from the client (measured: 0.18 s, returns the mesh at its true 1.371 x 1.901 x 0.721), so the
+--- mesh is not the problem -- the *texturing* is. A runtime-built magnet is a grey magnet.
+---
+--- 🔴 AND THE COMMAND BAR LIES ABOUT THIS. The identical write **succeeds** from `execute_luau`,
+--- which holds plugin capability. The failure only appears in a real `LocalScript` in Play. Had
+--- this been checked the convenient way, it would have shipped a grey magnet with a green tick
+--- against it. See [PITFALLS #63](../../docs/PITFALLS.md).
+---
+--- So the textured `MeshPart` lives in `ReplicatedStorage`, authored once in the editor. That does
+--- mean it lives in the `.rbxl` rather than in git -- accepted, and it is the same trade the eight
+--- `MaterialVariant`s already make. The five asset ids are recorded in the shared registry so the
+--- template can be rebuilt from scratch if the place is ever lost; `Config.Magnet.MESH` carries
+--- them too.
+local meshTemplate: MeshPart? = nil
+do
+	local found = ReplicatedStorage:WaitForChild("MagnetMesh", 20)
+	if found and found:IsA("MeshPart") then
+		meshTemplate = found :: MeshPart
+		local size = (meshTemplate :: MeshPart).Size
+		--- Checks that can fail. Everything about how this is held is derived from the mesh's own
+		--- dimensions and from `TIP_DIR` being a unit vector, so both are asserted rather than
+		--- trusted -- swapping the asset for a differently shaped one would otherwise move the
+		--- poles away from the tip in silence.
+		if (size - Magnet.MESH.SIZE).Magnitude > 0.05 then
+			Log.warn("hero mesh is %.3f x %.3f x %.3f but Config says %.3f x %.3f x %.3f -- HOLD and TIP_DIR were derived from the config size and no longer place the poles correctly",
+				size.X, size.Y, size.Z, Magnet.MESH.SIZE.X, Magnet.MESH.SIZE.Y, Magnet.MESH.SIZE.Z)
+		end
+		local tipLen = Magnet.MESH.TIP_DIR.Magnitude
+		if math.abs(tipLen - 1) > 0.02 then
+			Log.warn("Magnet.MESH.TIP_DIR is %.3f long, not 1 -- the tip would sit %.2f studs from the hand instead of TIP_OFFSET (%.2f), which is the distance the SERVER sizes its grant range on",
+				tipLen, tipLen * Magnet.TIP_OFFSET, Magnet.TIP_OFFSET)
+		end
+	else
+		--- 🔴 Named, not silent. The magnet still appears -- as the three boxes -- so without this
+		--- the game would read as merely unfinished rather than as broken.
+		Log.warn("ReplicatedStorage.MagnetMesh is missing -- falling back to the block magnet. Re-import assets/generated/magnet/magnet.glb and re-run the template step in Jobs/016.")
+	end
+end
+
 local function buildMagnet(char: Model)
 	local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") or char:FindFirstChild("HumanoidRootPart")
 	if not hand then
@@ -88,13 +139,31 @@ local function buildMagnet(char: Model)
 		return p
 	end
 
-	-- ⚠️ Vfx.RED / Vfx.CYAN, not hex literals. The particles and both beams already read those
-	-- constants; a second copy here means a magnet SKIN recolours the field and leaves the
-	-- physical poles signal-red, and nothing errors. Config-first decays one constant at a time
-	-- (PITFALLS #38, #52).
-	bar("Core", Vector3.new(1.6, 0.5, 0.5), CFrame.new(0, -1.1, 0), Vfx.CORE)
-	bar("PoleRed", Vector3.new(0.5, 1.3, 0.5), CFrame.new(-0.55, -1.8, 0), Vfx.RED)
-	bar("PoleCyan", Vector3.new(0.5, 1.3, 0.5), CFrame.new(0.55, -1.8, 0), Vfx.CYAN)
+	if meshTemplate then
+		local mesh = (meshTemplate :: MeshPart):Clone()
+		mesh.Parent = rig
+		local w = Instance.new("Weld")
+		w.Part0 = hand :: BasePart
+		w.Part1 = mesh
+		--- 🔴 The mesh is fitted around the TIP, never the other way round. `CENTRE_OFFSET` is
+		--- derived from the mesh height so the poles land where the block magnet's did; the tip
+		--- below is still placed from `Magnet.TIP_OFFSET`, which the SERVER sizes its grant range
+		--- off and cannot see.
+		w.C0 = CFrame.new(Magnet.MESH.HOLD) * CFrame.Angles(0, Magnet.MESH.YAW, 0)
+		w.Parent = mesh
+	else
+		-- ⚠️ Vfx.RED / Vfx.CYAN, not hex literals. The particles and both beams already read those
+		-- constants; a second copy here means a magnet SKIN recolours the field and leaves the
+		-- physical poles signal-red, and nothing errors. Config-first decays one constant at a time
+		-- (PITFALLS #38, #52).
+		--
+		--- 🔴 THE FALLBACK IS KEPT, not deleted. `CreateMeshPartAsync` is a network load: it can
+		--- fail on a bad connection, on a moderated asset, or if the id is ever wrong. Deleting
+		--- these three lines would turn any of those into an invisible magnet.
+		bar("Core", Vector3.new(1.6, 0.5, 0.5), CFrame.new(0, -1.1, 0), Vfx.CORE)
+		bar("PoleRed", Vector3.new(0.5, 1.3, 0.5), CFrame.new(-0.55, -1.8, 0), Vfx.RED)
+		bar("PoleCyan", Vector3.new(0.5, 1.3, 0.5), CFrame.new(0.55, -1.8, 0), Vfx.CYAN)
+	end
 
 	local tip = Instance.new("Part")
 	tip.Name = "Tip"
@@ -107,7 +176,13 @@ local function buildMagnet(char: Model)
 	tw.Part1 = tip
 	-- ⚠️ Magnet.TIP_OFFSET, not a literal. The server sizes its grant range off this number
 	-- and cannot see the rig, so a tip moved only here starts failing honest collections.
-	tw.C0 = CFrame.new(0, -Magnet.TIP_OFFSET, 0)
+	--
+	--- 🔴 The DIRECTION changed in job 016, the DISTANCE did not. The magnet now points forward, so
+	--- scrap has to arrive at its pole faces rather than under the player's hand -- but the offset
+	--- is still exactly `TIP_OFFSET` long, because that scalar is what the server adds to
+	--- `PULL.ARRIVE_RADIUS` and `GRANT.LAG_ALLOWANCE`. Rotating a fixed-length offset is invisible
+	--- to a range check measured from the root; lengthening it would not be.
+	tw.C0 = CFrame.new(Magnet.MESH.TIP_DIR.Unit * Magnet.TIP_OFFSET)
 	tw.Parent = tip
 
 	rig.Parent = char

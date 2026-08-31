@@ -736,3 +736,72 @@ land" and costs more than an empty Workspace does.
 **Check:** put a version marker in the generated output — a changed log string, a part count, an
 attribute — and read it back after an editor build. If it matches the previous build after a change,
 you are looking at the cache, not at your code.
+
+### 62. A `ViewportFrame` has no Bloom, no `Beam` and no `ParticleEmitter`
+
+The style guide says the glow a player sees **is** the Bloom pass, and that electric arcs are
+*"always a `Beam`"*. Neither reaches inside a `ViewportFrame`, so every effect this game reaches for
+first is unavailable the moment the shot is rendered in one.
+
+> **Measured** (job 015, in Play, 2026-08-31). A probe put a `Neon` part, a `Beam` and a
+> `ParticleEmitter` inside a viewport and the **identical three** out in the world, in one frame:
+>
+> | | in the world | in the viewport |
+> |---|---|---|
+> | `Neon` part | soft halo bleeding past its edges | flat colour, **hard edge** |
+> | `Beam` (`Enabled`, inside the frustum) | visible | **nothing** |
+> | `ParticleEmitter` (`Enabled`, `Rate` 60) | visible | **nothing** |
+>
+> `Lighting.BloomEffect` was present at intensity 0.8 the whole time. The viewport carries its own
+> lighting — `Ambient`, `LightColor`, `LightDirection` — and that is *all* it carries. `Atmosphere`
+> does not reach in either, so there is no distance haze to lean on.
+
+**Rule:** a viewport renders **shaded geometry and nothing else**. Anything that must glow, arc or
+spark has to be faked — paint the glow in 2D **behind** the viewport and set
+`BackgroundTransparency = 1` so it shows through, and build arcs from thin `Neon` parts. Depth cues
+have to be hand-authored too: dim each rank of geometry yourself, because nothing will do it for you.
+
+⚠️ And the 2D glow is not one disc. Six concentric circles at ~0.8 transparency render as a
+**bullseye you can count**; sixteen at ~0.98 read as a haze. The number of steps buys the smoothness,
+not the opacity of any one of them.
+
+**Check:** put the effect in the viewport *and* the same effect in the world, and screenshot them in
+the same frame. Do not check whether `Enabled` is true — it will be true, and it will mean nothing.
+
+### 63. A script cannot texture a mesh — and the command bar will tell you it can
+
+Two facts, and the second is what makes the first dangerous.
+
+> **The incident** (job 016). The player's magnet was going to be built entirely at runtime:
+> `AssetService:CreateMeshPartAsync` for the geometry, then a `SurfaceAppearance` assembled from
+> four map ids held in `Config.Magnet.MESH`. That way the only thing in the `.rbxl` would be
+> nothing at all, and the authoritative asset would live in git — decision 0017's argument applied
+> to one object.
+>
+> It fails on the last step:
+>
+> ```
+> The current thread cannot write 'ColorMap' (lacking capability Plugin)
+> ```
+>
+> The mesh half works perfectly — `CreateMeshPartAsync` returned the part from a `LocalScript` in
+> **0.18 s** at its true size. It is the *texturing* that is gated. A runtime-built mesh is a grey
+> mesh, and `TexturePack` is gated harder still (`RobloxScript`).
+
+**🔴 And the obvious way to check this reports the opposite.** Run the identical write through the
+command bar or `execute_luau` — including against the **Client** datamodel in a live Play session —
+and every one of `ColorMap`, `NormalMap`, `MetalnessMap`, `RoughnessMap` writes **successfully**,
+because that thread holds plugin capability. The failure appears *only* in a real `LocalScript`.
+Measured side by side in one session: command bar `true`, LocalScript `lacking capability Plugin`.
+
+This is [#18](#18-the-command-bar-is-privileged) and [#48](#48-a-capability-that-works-in-the-command-bar-and-fails-in-a-script)
+again, with a specific and expensive instance: a probe that runs privileged code cannot answer "may the game do this?"
+
+**Rule:** a textured `MeshPart` must be authored in the **editor** and cloned at runtime. Park the
+configured template in `ReplicatedStorage`, clone it per character, and accept that it lives in the
+place file — the same trade the eight `MaterialVariant`s already make. Record every asset id in the
+shared registry so the template is rebuildable if the place is ever lost.
+
+**Check:** put the gated write in a real `LocalScript`, press Play, and read the *error* log — not
+the return value of a command-bar experiment. If a capability is involved, the command bar is not
+evidence.

@@ -190,6 +190,64 @@ Magnet.PULL_TIMEOUT = 3.0
 --- and the server does not know, honest collections start being rejected as out of range.
 Magnet.TIP_OFFSET = 2.6
 
+--- The hero mesh (job 016). §3 of the style skill reserves meshes and `SurfaceAppearance` for
+--- exactly this class of object -- *"the hero meshes -- magnets, the Arena Core, guardians, robot
+--- parts"* -- and the player's magnet is the first thing in the game that qualifies.
+---
+--- 🔴 THE IDS LIVE HERE, NOT IN THE PLACE. A `MeshPart` sitting in `ReplicatedStorage` would exist
+--- only inside the `.rbxl`: `Workspace` does not sync, a mesh is not a script so Studio Sync cannot
+--- represent it as a file, and the editor copy goes stale
+--- ([#61](../../../docs/PITFALLS.md#61-a-generated-world-is-invisible-in-the-editor-and-the-editors-copy-goes-stale)).
+--- ⚠️ THE PART ITSELF CANNOT BE BUILT AT RUNTIME. That was the first design, and it fails: a script
+--- may not write `SurfaceAppearance.ColorMap` (*"lacking capability Plugin"*), so a runtime-built
+--- magnet is a grey magnet. The textured `MeshPart` therefore lives in `ReplicatedStorage`, authored
+--- in the editor -- the same trade the eight `MaterialVariant`s already make. These ids exist so the
+--- template is REBUILDABLE if the place is lost, not because the code assembles it from them.
+--- See [PITFALLS #63](../../../docs/PITFALLS.md).
+---
+--- Generated from our own `assets/concept_art/Robot.png` via Meshy image-to-3d. 7,595 triangles,
+--- 1.371 x 1.901 x 0.721 studs at scale 1. Source files and the reference image are in
+--- `assets/generated/magnet/`.
+Magnet.MESH = {
+	ID = "rbxassetid://117205352084553",
+	--- The four PBR maps the importer built a `SurfaceAppearance` from.
+	COLOR_MAP = "rbxassetid://86179837697259",
+	NORMAL_MAP = "rbxassetid://137866197232825",
+	METALNESS_MAP = "rbxassetid://80189603883950",
+	ROUGHNESS_MAP = "rbxassetid://132128183093036",
+
+	--- The mesh's true size, read back off the imported `MeshPart`. The client asserts the template
+	--- still matches and warns if the asset is ever swapped for one of a different shape, because
+	--- everything below is derived from these numbers.
+	SIZE = Vector3.new(1.9030959606170654, 1.792370319366455, 0.5396470427513123),
+
+	--- 🔴 THE OPEN END -- the two chrome pole faces -- IS LOCAL **+X**. Verified by photographing
+	--- the imported mesh at identity rotation next to a marker cube on +X, not by reading the
+	--- exporter's word for it. Local +Y is the RED arm, local -Y the CYAN arm.
+	---
+	--- The weld therefore turns the mesh +90° about Y, which maps local +X onto -Z: the pole faces
+	--- point FORWARD, away from the player, the way `Logo2.png` shows it being held. The first
+	--- version of this job hung the magnet straight down with its rounded back at the ground, which
+	--- pointed the one part of a horseshoe that does not pull at the thing it was meant to pull.
+	YAW = math.rad(90),
+
+	--- Where the mesh's centre sits relative to the hand: a little below it and forward, so the
+	--- bend sits at the grip and the whole magnet reads as held out in front.
+	--- ⚠️ Tuned live in Play against the character, not derived on paper: at (0, -0.30, -1.00) the
+	--- cyan arm passed through the leg. Forward and slightly up clears the body and reads as held
+	--- out in front, which is the pose `Logo2.png` shows.
+	HOLD = Vector3.new(0, -0.05, -1.42),
+
+	--- 🔴 The direction the tip is placed in, from the hand. `Magnet.TIP_OFFSET` stays the
+	--- MAGNITUDE, untouched at 2.6 -- the server adds it to `PULL.ARRIVE_RADIUS` and
+	--- `GRANT.LAG_ALLOWANCE` to size a grant range measured from the player's ROOT, and it cannot
+	--- see the rig. Rotating a fixed-length offset changes where scrap arrives without changing the
+	--- distance the server is assuming, so the contract holds by construction.
+	---
+	--- ⚠️ This vector MUST stay unit length. The client asserts it.
+	TIP_DIR = Vector3.new(0, -0.15, -0.99),
+}
+
 --- How far below its spawn point an in-flight object may sink before the server takes it
 --- back, in studs.
 ---
