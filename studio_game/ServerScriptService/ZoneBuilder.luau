@@ -216,7 +216,18 @@ local function buildProps(spec: any, root: Folder, parent: Instance): (number, {
 	--- two of the thirteen were hazard stripes; the census is the only honest summary.
 	local tintCensus: { [string]: number } = {}
 	for i, prop in ipairs(spec.PROPS) do
-		local model = place(root, prop.piece, spec.tileToWorld(prop.tx, prop.tz, 0), prop.rotY, parent)
+		--- 🔴 A wall prop sits ON the wall plane (`±HALF_X`), not on the nearest floor tile. The kit
+		--- builds these with their own clearance baked in; placing them a tile short left them
+		--- floating with a gap behind, and the long ones reaching through the wall entirely.
+		local pos
+		if prop.wall == "W" then
+			pos = spec.wallWorld(-spec.HALF_X, prop.tz * T)
+		elseif prop.wall == "E" then
+			pos = spec.wallWorld(spec.HALF_X, prop.tz * T)
+		else
+			pos = spec.tileToWorld(prop.tx, prop.tz, 0)
+		end
+		local model = place(root, prop.piece, pos, prop.rotY, parent)
 		if not model then
 			table.insert(problems, ("prop %d: piece %q is not in the built kit"):format(i, prop.piece))
 		else

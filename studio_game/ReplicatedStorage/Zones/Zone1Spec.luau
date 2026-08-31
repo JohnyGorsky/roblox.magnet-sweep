@@ -184,12 +184,20 @@ Zone1Spec.LAMP_ROWS = { -9, -6, -3, 0, 3, 6, 9 }
 
 export type Prop = {
 	piece: string,
-	--- Tile coordinates within the chunk.
+	--- Tile coordinates within the chunk. ⚠️ For a WALL prop, `tx` is ignored — see `wall`.
 	tx: number,
 	tz: number,
 	rotY: number,
 	--- Which accent tints this prop's painted panels, or nil to leave the kit's own colours.
 	accent: string?,
+	--- 🔴 `"W"` or `"E"` mounts this piece ON the wall plane rather than on a floor tile.
+	---
+	--- ⚠️ This exists because several kit pieces are *designed* to be wall-mounted — `Ind_Fan`'s
+	--- parts are pushed to local z 0.6–1.5 with the comment "clear of the wall plane", and
+	--- `Ind_PipeRun` is a 16-stud run meant to lie along a wall. Placed on the nearest floor TILE
+	--- they sat 4 studs proud of the wall with nothing behind them, and the two longest ones
+	--- reached straight through it — which is what `validate()` refused to build.
+	wall: string?,
 }
 
 --- ⚠️ EVERY id here must exist in `KitSpec`. Build group 07 states the rule: *"Built from the group
@@ -208,12 +216,14 @@ Zone1Spec.PROPS = {
 	{ piece = "Ind_Conveyor", tx = -3, tz = -7, rotY = 90 },
 
 	-- Toy-like machinery: control panels and fans, tinted.
-	{ piece = "Ind_ControlPanel", tx = -4, tz = 6, rotY = 90, accent = "Mint" },
-	{ piece = "Ind_ControlPanel", tx = 4, tz = 0, rotY = -90, accent = "CandyPink" },
-	{ piece = "Ind_Fan", tx = 4, tz = 6, rotY = -90 },
-	{ piece = "Ind_Fan", tx = -4, tz = -2, rotY = 90 },
+	{ piece = "Ind_ControlPanel", tx = 0, tz = 6, rotY = 90, accent = "Mint", wall = "W" },
+	{ piece = "Ind_ControlPanel", tx = 0, tz = 0, rotY = -90, accent = "CandyPink", wall = "E" },
+	{ piece = "Ind_Fan", tx = 0, tz = 6, rotY = -90, wall = "E" },
+	{ piece = "Ind_Fan", tx = 0, tz = -2, rotY = 90, wall = "W" },
 	{ piece = "Ind_Generator", tx = 3, tz = 4, rotY = 0, accent = "Lemon" },
-	{ piece = "Ind_PipeRun", tx = -4, tz = -5, rotY = 90 },
+	--- ⚠️ `rotY = 0`: the run's 16 studs lie along Z natively, so it runs ALONG the corridor beside
+	--- the wall. At 90° it lay ACROSS the corridor and drove 4 studs into the west wall.
+	{ piece = "Ind_PipeRun", tx = 0, tz = -5, rotY = 0, wall = "W" },
 
 	-- Crates and a beacon: things to sweep around, and one thing that says "industrial".
 	{ piece = "Prop_Crate", tx = -2, tz = 7, rotY = 15 },
@@ -222,7 +232,7 @@ Zone1Spec.PROPS = {
 	{ piece = "Prop_Crate", tx = 2, tz = -8, rotY = 0 },
 	{ piece = "Prop_Beacon", tx = -4, tz = 9, rotY = 0 },
 	{ piece = "Prop_Beacon", tx = 4, tz = -9, rotY = 0 },
-	{ piece = "Prop_RobotArm", tx = 4, tz = -6, rotY = -90, accent = "CandyPink" },
+	{ piece = "Prop_RobotArm", tx = 0, tz = -6, rotY = -90, accent = "CandyPink", wall = "E" },
 } :: { Prop }
 
 --------------------------------------------------------------------------------
@@ -407,9 +417,13 @@ function Zone1Spec.validate(): { string }
 			if turned then
 				loX, hiX, loZ, hiZ = b.loZ, b.hiZ, b.loX, b.hiX
 			end
-			local wx, wz = prop.tx * T, prop.tz * T
-			if wx + loX < -Zone1Spec.HALF_X or wx + hiX > Zone1Spec.HALF_X
-				or wz + loZ < -Zone1Spec.HALF_Z or wz + hiZ > Zone1Spec.HALF_Z then
+			--- ⚠️ A wall prop's X is the wall plane, so only its DEPTH into the room is meaningful —
+			--- checking it against `HALF_X` would fail by definition. Its Z is checked as normal.
+			local wx = prop.wall and 0 or prop.tx * T
+			local wz = prop.tz * T
+			local crossesX = not prop.wall
+				and (wx + loX < -Zone1Spec.HALF_X or wx + hiX > Zone1Spec.HALF_X)
+			if crossesX or wz + loZ < -Zone1Spec.HALF_Z or wz + hiZ > Zone1Spec.HALF_Z then
 				table.insert(problems, ("prop %d (%s) at tile %d,%d rot %d spans x %.1f..%.1f z %.1f..%.1f and crosses the wall plane (half extents %d x %d)")
 					:format(i, prop.piece, prop.tx, prop.tz, prop.rotY,
 						wx + loX, wx + hiX, wz + loZ, wz + hiZ, Zone1Spec.HALF_X, Zone1Spec.HALF_Z))

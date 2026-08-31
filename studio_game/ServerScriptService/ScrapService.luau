@@ -275,8 +275,19 @@ end
 --- whoever does know -- `Bootstrap`, via `ZoneManager` -- so that `ScrapService` never holds a path
 --- into a chunk that can stream out from under it.
 function ScrapService.spawnBox(centre: Vector3, halfX: number, halfZ: number, count: number): number
-	local n, ungrounded = 0, 0
-	for _ = 1, count do
+	local n, ungrounded, perched = 0, 0, 0
+	--- 🔴 `groundY` stops on the FIRST thing under the ray, which is a lamp hood or a tank cap as
+	--- readily as the floor. The first version accepted whatever came back, and 7 of 56 pieces
+	--- spawned twelve studs up on top of props — invisible to a footprint check, because a piece on
+	--- a hood is still inside the zone's X/Z bounds.
+	---
+	--- ⚠️ So a hit more than `MAX_RISE` above the volume's own floor plane is REJECTED and retried
+	--- rather than accepted. `attempts` is bounded: a volume that is genuinely roofed over should
+	--- report a shortfall, not spin.
+	local MAX_RISE = 2.0
+	local attempts, maxAttempts = 0, count * 6
+	while n < count and attempts < maxAttempts do
+		attempts += 1
 		local x = centre.X + (rng:NextNumber() * 2 - 1) * halfX
 		local z = centre.Z + (rng:NextNumber() * 2 - 1) * halfZ
 		local y = groundY(x, z, centre.Y)
@@ -284,9 +295,16 @@ function ScrapService.spawnBox(centre: Vector3, halfX: number, halfZ: number, co
 			ungrounded += 1
 			continue
 		end
+		if y > centre.Y + MAX_RISE then
+			perched += 1
+			continue
+		end
 		if ScrapService.spawn(Vector3.new(x, y + 0.35, z)) then
 			n += 1
 		end
+	end
+	if perched > 0 then
+		Log.info("spawnBox: rejected %d spawn point(s) that landed on top of a prop", perched)
 	end
 	--- ⚠️ Reported against what was ASKED for. "spawned 12" reads as success whether 12 or 40 were
 	--- requested; the shortfall is the number that means something.
