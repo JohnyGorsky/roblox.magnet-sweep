@@ -1,7 +1,7 @@
 # FINDING 0003: The boot screen coin glyph is still tofu; job 014's font fix could not have worked
 
 **Project:** `roblox.magnet-sweep`
-**Status:** open
+**Status:** fixed (2026-08-31) — Fixed 2026-08-31. Swapped U+1FA99 for U+1F4B0 at all THREE live sites -- and there were three, not one: Hud.local.luau:100 (the Coins icon), Hud.local.luau:466 (the upgrade panel price) and StationController.local.luau:219 (the station coins readout). Every place the game displayed a coin amount was rendering a .notdef box. Verified in Play with the same falsifiable measurement that found it: at a fixed TextSize 64 the new glyph measures 59px, identical to the known-good bolt U+1F529, against the old coin's 31px and a deliberately-absent codepoint's 34px. Analyzer: 27 issues across both files before, 27 after. Chose the money bag over the yellow circle U+1F7E1 -- also 59px -- because a plain gold disc risks reading as a status indicator in a factory game whose style guide calls for caged amber warning beacons. The only remaining U+1FA99 is a comment in BootScreen quoting section 7's diagram, which renders nowhere.
 **Severity:** med
 **Created:** 2026-08-31 10:26:24
 

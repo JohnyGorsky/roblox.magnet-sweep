@@ -43,6 +43,10 @@ export type Behaviour = {
 	screen: string?,
 	--- Said by the client when there is no screen. Names what is missing and when it lands.
 	notYet: string?,
+	--- The zone TIER this station sends the player to, if it is a way into the factory.
+	--- ⚠️ A tier number, not a zone id and certainly not an instance: the station must not know
+	--- what zone 1 is called or where it is, only that it is the first one.
+	enter: number?,
 }
 
 --- ⚠️ `= { ... } :: { ... }`, NOT `StationService.BEHAVIOUR: { ... } = { ... }`. A type annotation
@@ -83,7 +87,14 @@ StationService.BEHAVIOUR = {
 		actionText = "ENTER",
 		objectText = "FACTORY ENTRANCE",
 		screen = nil,
-		notYet = "ZONE 1 OPENS IN GROUP 07",
+		--- 🔴 No `notYet` any more -- job 017 built the destination. `enter` below moves the player
+		--- to zone 1's entry anchor via `ZoneManager`, which is the ONLY sanctioned way to reach a
+		--- zone: a hardcoded `workspace.Zones.COLOR_WORKSHOP` path here would work today and become
+		--- a nil index the moment a player is far enough away for the chunk to stream out.
+		---
+		--- ⚠️ If the zone failed to build, the prompt still answers -- with the reason. A station
+		--- that says ENTER and does nothing is the placeholder-shaped hole this job removes.
+		enter = 1,
 	},
 	ScrapArena = {
 		actionText = "WATCH",
@@ -183,6 +194,11 @@ function StationService.attachPrompts(): (number, { string })
 		if behaviour.notYet then
 			prompt:SetAttribute("NotYet", behaviour.notYet)
 		end
+		--- The whole contract travels on the prompt, same as `Screen` and `NotYet` -- so the client
+		--- needs no table of its own and cannot drift from this one.
+		if behaviour.enter then
+			prompt:SetAttribute("EnterTier", behaviour.enter)
+		end
 		prompt.Parent = host
 		n += 1
 	end
@@ -225,6 +241,36 @@ local USE_DISTANCE = PROMPT_DISTANCE * 1.8
 ---
 --- ⚠️ The station is found by its `StationId` attribute, never by a coordinate -- the Workshop is
 --- regenerated from a spec and every position in it has moved.
+--- Move a player into a zone, if they are really standing at the Factory Entrance.
+---
+--- 🔴 The proximity check is the point. `ScrapService` and `RequestRecycle` both learned this the
+--- expensive way: the prompt is a LocalScript, so the only thing that makes "I pressed E at the
+--- entrance" true is the server measuring it. Without this a modified client walks into any zone
+--- from anywhere -- and zones are exactly what the Magnet Power gates are supposed to ration.
+function StationService.enterZone(player: Player, stationId: unknown): (boolean, string)
+	if type(stationId) ~= "string" then
+		return false, "bad request"
+	end
+	local behaviour = StationService.BEHAVIOUR[stationId]
+	if not behaviour or not behaviour.enter then
+		return false, "that is not a way into the factory"
+	end
+	local at, why = StationService.playerIsAt(player, stationId)
+	if not at then
+		return false, why
+	end
+	--- 🔴 THE TIER COMES FROM THE SERVER'S OWN TABLE, never from the client.
+	---
+	--- ⚠️ The first version took a `tier` number off the wire and passed it straight to `sendTo`.
+	--- The proximity half was right; this half did not exist. It passed its test only because
+	--- tier 2 does not exist yet, so every wrong number was refused by a `byTier` lookup — the test
+	--- succeeded for the wrong reason, and **job 018 is what arms it**: the moment zone 2 registers,
+	--- a client standing legitimately at the entrance could send `2` and land past the physical
+	--- gate. `Remotes.luau`'s own note claimed this was defended; it was not.
+	local ZoneManager = require(script.Parent:WaitForChild("ZoneManager", 20))
+	return ZoneManager.sendTo(player, behaviour.enter)
+end
+
 function StationService.playerIsAt(player: Player, stationId: string): (boolean, string)
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?

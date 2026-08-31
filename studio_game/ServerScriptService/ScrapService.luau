@@ -265,6 +265,38 @@ function ScrapService.spawnField(centre: Vector3, radius: number, count: number)
 	return n
 end
 
+--- Spawn `count` scrap inside an axis-aligned box. The zone form of `spawnField`.
+---
+--- ⚠️ A BOX, not a circle, because a zone is a corridor: a circular field sized to reach the ends
+--- would put most of its area through the walls, and `groundY` would reject those silently until
+--- the "spawned N" number quietly stopped matching the N that was asked for.
+---
+--- 🔴 This module knows nothing about zones, and must not. It is handed a volume in world space by
+--- whoever does know -- `Bootstrap`, via `ZoneManager` -- so that `ScrapService` never holds a path
+--- into a chunk that can stream out from under it.
+function ScrapService.spawnBox(centre: Vector3, halfX: number, halfZ: number, count: number): number
+	local n, ungrounded = 0, 0
+	for _ = 1, count do
+		local x = centre.X + (rng:NextNumber() * 2 - 1) * halfX
+		local z = centre.Z + (rng:NextNumber() * 2 - 1) * halfZ
+		local y = groundY(x, z, centre.Y)
+		if not y then
+			ungrounded += 1
+			continue
+		end
+		if ScrapService.spawn(Vector3.new(x, y + 0.35, z)) then
+			n += 1
+		end
+	end
+	--- ⚠️ Reported against what was ASKED for. "spawned 12" reads as success whether 12 or 40 were
+	--- requested; the shortfall is the number that means something.
+	if n < count then
+		Log.warn("spawnBox: %d of %d placed (%d had no ground beneath them) around %s",
+			n, count, ungrounded, tostring(centre))
+	end
+	return n
+end
+
 --------------------------------------------------------------------------------
 -- The state tick. The SERVER decides transitions -- it already knows every player
 -- position and every scrap position, so this needs no client remote at all.

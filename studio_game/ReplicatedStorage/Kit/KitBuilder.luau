@@ -95,6 +95,27 @@ local function footprint(piece: KitSpec.Piece): { [string]: number }
 	return { X = hi.X - lo.X, Y = hi.Y - lo.Y, Z = hi.Z - lo.Z }
 end
 
+--- The piece's world-axis BOUNDS about its own origin, as lo/hi per axis.
+---
+--- ⚠️ Exported because a consumer placing a piece needs to know how far it REACHES, not just how
+--- big it is — `footprint` returns extents, which cannot answer "does this cross the wall plane".
+--- Job 017 nearly wrote a third copy of the rotation maths in `Zone1Spec`; two is already one too
+--- many, and the copy would have read `part.size.X` on what is actually a `{x, y, z}` array.
+function KitBuilder.bounds(piece: KitSpec.Piece): { [string]: number }
+	local lo = { X = math.huge, Z = math.huge }
+	local hi = { X = -math.huge, Z = -math.huge }
+	for _, part in ipairs(piece.parts) do
+		local ws = worldSize(part)
+		local half = { X = ws.X / 2, Z = ws.Z / 2 }
+		local off = { X = part.offset[1], Z = part.offset[3] }
+		for _, axis in ipairs({ "X", "Z" }) do
+			lo[axis] = math.min(lo[axis], off[axis] - half[axis])
+			hi[axis] = math.max(hi[axis], off[axis] + half[axis])
+		end
+	end
+	return { loX = lo.X, hiX = hi.X, loZ = lo.Z, hiZ = hi.Z }
+end
+
 function KitBuilder.validate(): { string }
 	local problems = {}
 	local seen: { [string]: boolean } = {}

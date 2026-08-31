@@ -97,7 +97,7 @@ local gui = Components.screen("Hud", playerGui, 10)
 -- ── Coins ─────────────────────────────────────────────────────────────────────
 local coinsPanel = Components.panel("Coins", gui)
 local coinsIcon = Components.label("Icon", coinsPanel, {
-	text = "🪙",
+	text = "💰",
 	align = Enum.TextXAlignment.Center,
 	color = Theme.color.arena,
 	size = 30,
@@ -463,7 +463,7 @@ function renderQuotes(quotes: { Quote })
 		-- would have been left behind the day a signal colour changed (PITFALLS #39).
 		row.delta.Text = ("%s <font color=\"#%s\">→ %s</font>"):format(
 			numberFor(q.value, q.decimals), Theme.color.magnet:ToHex(), numberFor(q.nextValue, q.decimals))
-		row.price.Text = if q.maxed then "MAX" else ("🪙 %s"):format(comma(q.cost))
+		row.price.Text = if q.maxed then "MAX" else ("💰 %s"):format(comma(q.cost))
 		row.price.TextColor3 = if q.maxed
 			then Theme.color.textDim
 			elseif q.affordable then Theme.color.arena

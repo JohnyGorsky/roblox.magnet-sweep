@@ -40,6 +40,7 @@ local Banner = require(UiFolder:WaitForChild("Banner", 20))
 local Screens = require(UiFolder:WaitForChild("Screens", 20))
 
 local recycleRemote = Remotes.getFunction("RequestRecycle", 20)
+local enterZoneRemote = Remotes.getFunction("RequestEnterZone", 20)
 
 local function comma(n: number): string
 	local s = ("%d"):format(math.floor(n + 0.5))
@@ -216,7 +217,7 @@ end
 
 local function render(p: Preview)
 	carried.Text = ("CARRYING %s SCRAP"):format(comma(p.scrap))
-	coinsValue.Text = ("🪙 %s"):format(comma(p.coins))
+	coinsValue.Text = ("💰 %s"):format(comma(p.coins))
 	repairValue.Text = ("+%s HP"):format(comma(p.hp))
 
 	local canRecycle = p.scrap > 0
@@ -377,6 +378,31 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt, promptPlayer)
 	--- ⚠️ `ModalEnabled` is cleared by hand here. `closeAll` only reaches screens that were open,
 	--- so a station with no screen would otherwise leave the flag set by whatever closed.
 	UserInputService.ModalEnabled = false
+
+	--- A station that is a way INTO the factory. No screen, no banner -- you just go.
+	---
+	--- 🔴 The tier comes off the prompt and goes straight to the server, which decides. This client
+	--- does not move the character and must not: `ProximityPromptService.PromptTriggered` fires
+	--- locally, so anything decided here is a claim. The server re-checks that the player is
+	--- actually at the entrance.
+	---
+	--- ⚠️ The refusal is SHOWN. A door that declines silently is indistinguishable from a door that
+	--- is broken, which is the whole complaint PITFALLS #29 and #34 record.
+	--- ⚠️ Sends the STATION ID, never a tier. The server resolves the destination from its own
+	--- table, so this client cannot ask for a zone at all -- see `StationService.enterZone`.
+	local enterTier = prompt:GetAttribute("EnterTier")
+	if type(enterTier) == "number" then
+		task.spawn(function()
+			local ok, payload = enterZoneRemote:InvokeServer(id)
+			if not ok then
+				local reason = (type(payload) == "table" and type(payload.reason) == "string")
+					and payload.reason or "THE FACTORY IS CLOSED"
+				Banner.show(reason:upper(), Theme.color.alarm)
+			end
+		end)
+		return
+	end
+
 	local notYet = prompt:GetAttribute("NotYet")
 	Banner.show(if type(notYet) == "string" then notYet else "NOT BUILT YET", Theme.color.textDim)
 end)

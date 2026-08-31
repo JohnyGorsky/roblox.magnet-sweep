@@ -85,6 +85,13 @@ Remotes.SPECS = {
 		note = "Scrap -> Coins. Server owns the totals; the client sends intent only.",
 	},
 	{
+		name = "RequestEnterZone",
+		kind = "Function",
+		dir = "ClientToServer",
+		rate = "Economy",
+		note = "Move the player into a built zone. Invoke with a STATION ID string -- never a tier. 🔴 Two checks, both server-side, because a ProximityPrompt fires on the CLIENT so 'the player pressed E at the entrance' is a claim: (1) the player really is within range of that station, (2) the destination is read from the server's own BEHAVIOUR table and gated on Magnet Power vs Config/Zones. An earlier version took the tier off the wire and only did (1); it passed its test because tier 2 did not exist yet. Replies (ok: boolean, { reason: string }).",
+	},
+	{
 		name = "RequestRepair",
 		kind = "Function",
 		dir = "ClientToServer",

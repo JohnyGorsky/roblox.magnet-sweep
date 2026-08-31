@@ -469,9 +469,127 @@ do
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The zones. Job 017 -- the factory stops being one room.
+--
+-- ⚠️ AFTER the Workshop and BEFORE the scrap pool, and both halves matter.
+--   * After, because `WorkshopBuilder` is what rebuilds `ServerStorage.Kit`, and `ZoneBuilder`
+--     places pieces out of that folder. Building a zone first would place from a kit that is
+--     about to be destroyed.
+--   * Before, because `ScrapService` needs somewhere to put tier-1 scrap, and it asks
+--     `ZoneManager` for the spawn volumes rather than holding a path into a zone.
+--------------------------------------------------------------------------------
+
+do
+	local ZoneBuilder = require(need(script.Parent, "ZoneBuilder"))
+	local ZoneManager = require(need(script.Parent, "ZoneManager"))
+	local Zone1Spec = require(need(need(ReplicatedStorage, "Zones"), "Zone1Spec"))
+
+	--- ⚠️ Goes through the module Bootstrap already required, for the reason `workshop.rebuild`
+	--- records: `execute_luau` runs in a separate Luau context and a fresh `require` there builds a
+	--- SECOND copy of the module with its own state (PITFALLS #16, #17).
+	DevTools.register("zone.rebuild", "Rebuild zone 1 from its spec (also the idempotence test)", function()
+		local before = 0
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if d:IsA("BasePart") then before += 1 end
+		end
+		local built, parts, problems = ZoneBuilder.build(Zone1Spec)
+		local after = 0
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if d:IsA("BasePart") then after += 1 end
+		end
+		if not built then
+			return false, ("refused: %s"):format(table.concat(problems, "; "))
+		end
+		local summary = ("rebuilt: %d zone parts | workspace %d -> %d (idempotent: %s) | %s"):format(
+			parts, before, after,
+			before == after and "YES" or "*** NO, THE WORLD GREW ***",
+			ZoneManager.describe())
+		if #problems > 0 then
+			return true, ("%s | %d PROBLEM(S): %s"):format(summary, #problems, table.concat(problems, "; "))
+		end
+		return true, summary
+	end)
+
+	local model, parts, problems = ZoneBuilder.build(Zone1Spec)
+	for _, p in ipairs(problems) do
+		Log.error("ZONE %s", p)
+	end
+	--- 🔴 Same stance as the Workshop: in Studio a failed zone must not be playtested and mistaken
+	--- for an art problem. A zone that built with problems is a zone whose anchors may be wrong,
+	--- and every position job 018 derives from them would inherit that.
+	if not model or #problems > 0 then
+		if RunService:IsStudio() then
+			error(("ZONE 1 FAILED: %d problem(s) -- see the errors above"):format(#problems), 0)
+		end
+	else
+		--- ⚠️ Stated against the SHARED budget, not the zone's own. `MAX_PARTS_IN_VIEW` is
+		--- documented as "a zone chunk plus the Workshop", so the number that matters is the total.
+		--- ⚠️ The BUILT geometry, not `workspace:GetDescendants()`.
+		---
+		--- The first version counted the whole workspace and called it "in view". Two things were
+		--- wrong with that and they pulled in opposite directions: it ran BEFORE
+		--- `ScrapService.init()` allocated its 400-part pool, so it under-reported by a third; and
+		--- "in view" is a RENDERING ceiling, while the Workshop (z -52..52) and zone 1
+		--- (z -284..-116) sit 64 studs apart behind solid walls and can never be co-visible. It
+		--- compared two quantities that were not the same quantity.
+		local ws = workspace:FindFirstChild("Workshop")
+		local workshopParts = 0
+		if ws then
+			for _, d in ipairs(ws:GetDescendants()) do
+				if d:IsA("BasePart") then workshopParts += 1 end
+			end
+		end
+		local worst = math.max(parts, workshopParts)
+		Log.info("Zone 1: %d parts | Workshop %d | worst single view %d of the %d-part budget (%.0f%%)",
+			parts, workshopParts, worst, Perf.BUDGET.MAX_PARTS_IN_VIEW,
+			worst / Perf.BUDGET.MAX_PARTS_IN_VIEW * 100)
+		if worst > Perf.BUDGET.MAX_PARTS_IN_VIEW then
+			Log.error("a single space exceeds the in-view part budget, and eleven more zones are coming")
+		end
+	end
+end
+
 MagnetState.start()
 ScrapService.init()
 ScrapService.start()
+
+--------------------------------------------------------------------------------
+-- Scrap in the zone. Job 017.
+--
+-- 🔴 `Bootstrap` is the only thing here that knows about BOTH zones and scrap, and that is the
+-- point: `ScrapService` is handed world-space volumes and never learns what a zone is, while
+-- `ZoneManager` never learns what scrap is. Neither holds a reference into the other.
+--
+-- ⚠️ AFTER `ScrapService.start()`, because the pool has to exist before anything can be taken
+-- out of it.
+--------------------------------------------------------------------------------
+
+do
+	local ZoneManager = require(need(script.Parent, "ZoneManager"))
+	local Zone1Spec = require(need(need(ReplicatedStorage, "Zones"), "Zone1Spec"))
+
+	local zone = ZoneManager.byTier(1)
+	if not zone then
+		--- Not fatal: the zone build already errored loudly above if it failed, and a Workshop with
+		--- no factory beyond it is still playable. Saying it twice would be noise; saying it not at
+		--- all would leave an empty zone looking like a broken scrap system.
+		Log.warn("zone 1 is not registered, so no scrap was placed in it")
+	else
+		local placed = 0
+		for _, v in ipairs(zone.spawnVolumes) do
+			placed += ScrapService.spawnBox(v.centre, v.halfX, v.halfZ, Zone1Spec.SCRAP_PER_VOLUME)
+		end
+		local wanted = #zone.spawnVolumes * Zone1Spec.SCRAP_PER_VOLUME
+		--- ⚠️ Against the denominator, the complaint this file makes about part counts and station
+		--- prompts. "placed 42" is a number you scroll past; "42 of 56" is one you look into.
+		if placed < wanted then
+			Log.error("zone 1 scrap: only %d of %d placed -- some volumes have no floor under them", placed, wanted)
+		else
+			Log.info("zone 1 scrap: %d placed across %d volume(s)", placed, #zone.spawnVolumes)
+		end
+	end
+end
 
 --------------------------------------------------------------------------------
 -- The stations. Job 013 -- the Workshop stops being scenery.
@@ -494,6 +612,17 @@ do
 	else
 		Log.info("stations: %d/%d prompts attached", attached, wanted)
 	end
+
+	--- 🔴 The server decides whether the player is at the entrance, not the prompt. See
+	--- `StationService.enterZone`: a `ProximityPrompt` fires on the CLIENT, so without the check a
+	--- modified client walks into any built zone from anywhere -- past the Magnet Power gate that
+	--- is the game's entire pacing mechanism.
+	RemoteBinder.bindFunction("RequestEnterZone", function(player: Player, stationId: any): (boolean, any)
+		--- ⚠️ A STATION ID, not a tier. The server looks the destination up in its own table; the
+		--- client cannot name a zone at all, let alone one it has not unlocked.
+		local ok, reason = StationService.enterZone(player, stationId)
+		return ok, { reason = reason }
+	end)
 
 	--- ⚠️ Bound even though it cannot succeed yet. `RequestRepair` refusing with a reason is a
 	--- different thing from `RequestRepair` being an unbound endpoint a prompt points at --

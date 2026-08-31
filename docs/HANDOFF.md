@@ -15,6 +15,7 @@ calls **the gate**.
 | **Task list** | ✅ Complete. 14 groups, 582 items, sequenced into jobs |
 | **Place** | ✅ Live. `111667188608192`, universe `10764307230`. `StreamingEnabled` on, `MaxPlayers` 12, `LightingStyle` Realistic |
 | **Sync** | ✅ Connected and **VERIFIED BOTH WAYS** — flat layout, 6 synced service folders (job 002). ⚠️ It DROPPED silently on a PC restart, 2026-08-31. To check: write a throwaway `.luau` into a synced folder and read the DataModel back; delete it and confirm the instance goes ([#11](PITFALLS.md#11-reopening-a-place-silently-drops-the-sync-connection)) |
+| **Zones** | ✅ **Zone 1 is real** (job 017). `workspace.Zones.COLOR_WORKSHOP`, one streamable `Model`, 430 parts, 56 scrap, reached from the Factory Entrance. `ZoneManager` is the registry every later zone registers with — **never resolve a zone by `Workspace` path** |
 | **Magnet** | ✅ **A hero mesh, not three boxes** (job 016). `ReplicatedStorage.MagnetMesh`, cloned per character, poles forward. ⚠️ It lives in the `.rbxl` and NOT in git — a script cannot texture a mesh ([#63](PITFALLS.md)) — so `Assets/registry/meshes.md` is the only record of its five asset ids outside the place |
 | **Code** | ✅ **38 scripts** — 21 ReplicatedStorage (incl. the 5-module `Ui/` layer and `Workshop/`), 8 ServerScriptService, 8 StarterPlayerScripts, 1 ReplicatedFirst. **`tools/luau-analyze.sh` checks all of it on disk in ~1s — run it before any playtest** |
 | **Assets** | ✅ 32 PBR maps for 8 `MaterialVariant`s · ✅ **all 15 sound slots landed.** ⚠️ `UI.Press` is 1.06 s against a brief asking ≤0.25 s — **audition it with F3**; if it rings, swap a shorter switch from the same set |
@@ -23,7 +24,7 @@ calls **the gate**.
 | **Sound** | ✅ **The game makes noise.** 15 slots filled and verified in Play; `AudioBench` (F3) auditions a candidate in the slot it will occupy. ⚠️ Two licences in `SoundKit.LANDED`: 14 are Pro Sound Effects (Roblox-only), `UI.Press` is the owner's own upload |
 | **Boot** | ✅ **The game has an opening, and it has art.** `ReplicatedFirst` handoff, four real load conditions, the title card, one line of tutorial that retires itself — and job 015's live `ViewportFrame` diorama: the magnet, a corridor, a robot, the player, and scrap that flies in per completed stage. **The last P0 is closed** |
 | **Workshop** | ✅ **A lit hub with seven working-or-honest stations.** 425 parts from a spec in git; the Magnet Lab and Recycler are wired, the rest name the group they wait on |
-| **HUD** | ✅ **The game shows you what you are doing.** Coins, Flow ×1–×5 → RUSH, Scrap/Capacity, SCRAP FULL, banners, and a working upgrade panel. Measured on the phone preset (canvas **666×316**) and clear of Roblox's own thumbstick and jump button. ✅ The **desktop** arrangement is now verified too (canvas 1825×1255, `touch=false`, layout clean) |
+| **HUD** | ✅ **The game shows you what you are doing.** ⚠️ 2026-08-31: every coin readout in the game had been rendering a **tofu box** — `finding 0003`, now fixed in all three places.** Coins, Flow ×1–×5 → RUSH, Scrap/Capacity, SCRAP FULL, banners, and a working upgrade panel. Measured on the phone preset (canvas **666×316**) and clear of Roblox's own thumbstick and jump button. ✅ The **desktop** arrangement is now verified too (canvas 1825×1255, `touch=false`, layout clean) |
 
 **What is NOT built:** zones 1–2, rare cargo and extraction, guardians, the robot, the Arena,
 persistence, the Factory Refresh. **Groups 07–12.** Groups 04, 05 and 06 are done.
@@ -57,6 +58,7 @@ every price.
 | **013** | The stations work | Prompts on all seven; the Magnet Lab **reuses** job 011's upgrade panel rather than rebuilding it; the Recycler asks the economy's real question — Coins or robot HP, side by side, neither pre-selected — and banks +1,920 coins end to end. Wrote a PITFALLS #47 field annotation *after* reading #47 |
 | **012** | The Workshop room | 425 parts from a spec in git — seven coloured station machines, neon signage, hall lighting, a measured Arena sightline. **Built the lighting to a sentence in a doc instead of to the concept art beside it** and produced a black room. Independent review found 13 issues, 11 real — two dressing pieces landing through walls, and the plinth hiding the sign on all seven stations |
 | **011** | Boot & HUD (the HUD half) | Coins, Flow, Scrap/Capacity, banners, upgrade panel, and a layout audit that ships. **Six defects found while building, eleven more by the review** — including a modal that re-centred the scrap readout onto the thumbstick permanently, and a `hud.hide` that missed the banner and so invalidated its own decision-0018 check. Wired `RequestUpgrade` so coins buy something |
+| **017** | Zone 1 and the zone manager | The factory stops being one room: `ZoneManager` (the registry every later zone needs), `Zone1Spec` as data in git, `ZoneBuilder`, a `RequestEnterZone` remote with a **server-side** proximity check, and scrap spawning in the zone. 430 parts, 56 scrap, verified in Play. **Shipped a bug and caught it: the Color Workshop had no colour** — `tint()` selected `SmoothPlastic`, which the kit uses for 3 parts of 90, and then threw away its own return count so it reported success. Also: `GetBoundingBox` lied (rotated pivot) and an `execute_luau` probe lied (separate Luau context, #16/#17) |
 | **016** | The magnet becomes a real object | The player's hero prop was three welded boxes. Now it is the key-art horseshoe — red + cyan, chrome pole shoes — pointing where the player looks. **Two owner corrections: it was upside down (a horseshoe pulls with its OPEN end), and I had generated from the wrong reference entirely** — `Robot.png`'s crane-mounted magnet instead of `Logo2.png`, the game's own key art, which was already in the repo and which I had never opened. Found [PITFALLS #63](PITFALLS.md): a script cannot write `SurfaceAppearance` maps, and the command bar says it can |
 | **015** | The loading screen gets its art | A live `ViewportFrame` diorama instead of a flat image, because §7 asks the screen to *feel interactive* and a picture cannot. **A probe measured, before any art existed, that a ViewportFrame renders no Bloom, no `Beam` and no `ParticleEmitter`** — so the glow is painted in 2D behind a transparent viewport. Found the 🪙 coin still rendering as tofu (`finding 0003`), contradicting job 014's summary: `FontFace` cannot add a codepoint no font contains. Six composition passes; three of them read as a doorway |
 | **009** | Quality tiers, repaired | Light cull **could never fire** (kit max 18 vs threshold 40); Low's PBR drop **undone by the server on every spawn** |
@@ -120,31 +122,60 @@ lesson, see [PITFALLS #45](PITFALLS.md#45-the-rendered-docs-site-misreports-depr
 
 ---
 
-## ▶️ START HERE — **group 07: zones 1–2**
+## ▶️ START HERE — **group 07, continued: job 018 (the gate + zone 2)**
 
-Jobs #011–#015 are done. **The core loop is playable end to end**: the game boots with a real loading
-screen, teaches itself with one line of text, you sweep scrap, watch Coins and Flow on a HUD, walk
-into a lit Workshop, upgrade your magnet at the Magnet Lab and recycle scrap for Coins at the
-Recycler — which asks you the game's actual economic question.
+Jobs #011–#017 are done. **The factory is no longer one room.** The game boots with a real loading
+screen, teaches itself in one line, you sweep scrap with a hero magnet built from the game's own key
+art, spend Coins at the Magnet Lab, recycle at the Recycler — and now walk out of the Factory
+Entrance into **Zone 1, the Color Workshop**, and sweep real scrap there.
 
-**Next: [build group 07](build/07-zones-1-2.md)** — both zones as self-contained streamable chunks,
-their scrap sets, the zone manager, and the 1→2 gate. The Factory Entrance station is already
-standing and already says `ZONE 1 OPENS IN GROUP 07`; it is waiting for exactly this.
+### 🔴 Group 07 was SPLIT. Read this before picking up "group 07".
 
-Then **group 08 (rare cargo + escape)**, which is what the roadmap's gate question is really about.
+[Build group 07](build/07-zones-1-2.md) is **34 items, 27 of them P0** — two zones, a gate, a
+seven-fixture Service Hub, a MagRail, a return lane, five hazards, two ambience passes. That is not
+one job; job 012 built a whole room in one pass and its review found thirteen issues. Split by
+dependency:
 
-Read first: [PITFALLS](PITFALLS.md) — **62 entries**. #55–#61 came out of jobs 011–014; **#62** is job 015's, and it is an engine constraint worth knowing before any UI work: *a `ViewportFrame` has no Bloom, no `Beam` and no `ParticleEmitter`.*
-Most are one shape: *a measurement that returned a confident default, or a check that passed because
-it was measuring nothing.*
+| Job | Scope | State |
+|---|---|---|
+| **017** | zone manager · Zone 1 · the Workshop connection | ✅ done |
+| **018** | the 1→2 gate · Zone 2 · zone 2 scrap set | ⬅ **next** |
+| **019** | Service Hub ×7 fixtures · MagRail · return lane | after 018 |
+| **020** | P1 hazards ×5 · ambience ×2 | last |
 
-⚠️ **The Workshop is GENERATED, not hand-placed** — `Workspace` does not sync, so the room lives in
-git as data ([0017](decisions/0017-the-kit-is-generated-from-a-spec.md)). It builds on Play. To see it
-in the **editor**, reopen the place first (Studio caches modules for a whole Edit session), then run
-`require(game.ServerScriptService.WorkshopBuilder).build()` — [#61](PITFALLS.md#61-a-generated-world-is-invisible-in-the-editor-and-the-editors-copy-goes-stale).
-Zones should follow the same pattern.
+⚠️ **Count `xN` rows as N items.** The manifest's `xN` suffix is a count, and job 017 found **8 of
+the 34 items already built** — the whole tier-1 scrap set exists in `ScrapSpec` and is live. Check
+what exists before building it (this is the "coverage by link" trap PITFALLS records).
+
+### What job 018 inherits, and must use rather than re-invent
+
+- 🔴 **`Zone1Spec.EXIT` is a CONTRACT.** It is where the 1→2 gate stands, the same shape as
+  `WorkshopSpec.ARENA_ANCHOR`'s contract with group 10. Nothing is drawn there; use it rather than
+  choosing a spot, or the corridor stops being continuous (decision 0003).
+- **`ZoneManager` is the only sanctioned way to reach a zone.** No script may resolve a zone by
+  `Workspace` path — under Instance Streaming that is a nil-index crash, not a smell. Zone 2
+  registers the same way zone 1 does.
+- **`ZoneBuilder.build(spec)`** takes any spec of Zone1Spec's shape. Zone 2 should be a second spec,
+  not a second builder.
+- The gate value (Magnet Power 20 for zone 2) is in `Config/Zones.luau` already, as a **§62 initial
+  balancing target that the docs say must be playtested.**
+
+⚠️ **Zones are GENERATED, not hand-placed** — `Workspace` does not sync, so both the Workshop and
+Zone 1 live in git as data ([0017](decisions/0017-the-kit-is-generated-from-a-spec.md)) and build on
+Play. They are **invisible in the editor** until built, and the editor copy goes stale
+([#61](PITFALLS.md#61-a-generated-world-is-invisible-in-the-editor-and-the-editors-copy-goes-stale)).
+Dev commands exist for both: `workshop.rebuild` and `zone.rebuild`, each of which is also its own
+idempotence test.
 
 ⚠️ **`tools/luau-analyze.sh` exists.** Run it before any playtest — it caught a syntax error in three
-of the last four jobs, including a PITFALLS #47 field annotation written *after* reading #47.
+of four consecutive jobs.
+
+Read first: [PITFALLS](PITFALLS.md) — **63 entries**. Most are one shape: *a measurement that
+returned a confident default, or a check that passed because it was measuring nothing.* The two
+newest are engine constraints worth knowing before you start:
+- **#62** — a `ViewportFrame` has no Bloom, no `Beam` and no `ParticleEmitter`.
+- **#63** — a script **cannot** write `SurfaceAppearance` maps, and the command bar will tell you it
+  can. Textured meshes must be authored in the editor.
 
 ## ▶️ The bigger picture
 
@@ -166,12 +197,12 @@ together a backlog nobody was tracking ([PITFALLS #32](PITFALLS.md#32-the-waitin
 
 | # | What | Why it needs you |
 |---:|---|---|
-| 0 | **A commit** — job 015 (`BootScreen`, PITFALLS #62, `Jobs/015/`, `findings/0003`), plus the still-pending deletion of `studio_game/ReplicatedStorage/SyncProbe.luau` | ⚠️ The SyncProbe was a throwaway used to test that sync had reconnected; it got swept into `de43055` before being deleted. Removing it is correct — it was never game code |
-| 1 | **Audition `UI.Press` with F3** — `89108158102227`, your own Jungle upload | It is **1.06 s** against a brief asking ≤0.25 s. If it rings, a shorter switch from the same `Toggle Switch, Industrial` set replaces it. It fires on *every tap in the game*, so a tail becomes a melody |
-| 2 | At [the gate](roadmap/mvp.md#the-gate), **judge whether the sweep feels good** | A *feel* question, played, and the roadmap gates everything after zone 2 on it. Every ingredient now exists: the pull, the sound, a HUD showing what you earn, a hub worth returning to, and a first-run experience |
-| 3 | **Confirm [finding 0002](../findings/0002-magnet-flow-now-multiplies-scrap-not-coi.md)** — Magnet Flow now multiplies **scrap**, not Coins | Fixing the double mint was unambiguous; **where Flow's bonus lands is a balance call Claude made alone.** A Rush now fills the magnet faster instead of paying more per pickup, which interacts with the paid Capacity track. `Economy.TUNED` is still false |
-| 4 | **The Workshop half of the concept-art gap** — the loading screen half is done | Still a blockout: no ceiling, no conveyors, no floor arrows, and the machines are simpler than `assets/concept_art/Arena.png`. 🔴 **This half is parts work for `KitSpec`, not Meshy** — style §3 is parts-first and §5 names conveyors, floor arrows and crates as kit pieces. Job 015 established that; do not re-litigate it |
-| 5 | ✅ **DONE — the phone pass ran** (owner flipped the emulator, 2026-08-31). Found and fixed a 3 px magnet/tagline overlap that existed on **desktop too**; confirmed the halo stays circular; hero mesh costs **+0.31 ms**, below the noise floor. **The HUD's layout audit ran against 5 real reserved rects for the first time and passed** — on desktop it had always had 0 rects to collide with | Nothing outstanding. The one caveat: Studio is pinned at 67 ms/frame regardless, so "no measurable cost" is not "free on real hardware" |
+| 0 | **A commit.** Uncommitted: job 017 (3 new files + 5 modified), `Jobs/017/`, PITFALLS #63, `findings/0003` (fixed), the tofu-coin fix in `Hud` and `StationController`, the `.gitignore` change and the `git rm --cached` of 82 MB of mesh blobs, `assets/generated/README.md` | ⚠️ You committed mid-session as `1aa4c9c`, which swept up **76 MB of a superseded magnet** — history was NOT rewritten, so that stays. `.gitignore` now matches `**/*.glb|fbx|obj|zip` wherever they land, and `assets/generated/README.md` records why |
+| 1 | 🔴 **Job 017 has NO independent reviewer finding.** One was running when the session was reset; its result was lost | GROUND-RULES 8 makes it mandatory, and the pattern has held for sixteen jobs — every one has had a real defect found by review. **Re-run it**: hand an agent `Jobs/017/implementation-plan.md`'s requirement and the diff, and do NOT tell it my theory. Worth pointing at specifically: the chunk rule under streaming, the `RequestEnterZone` proximity check, `tint()`'s white-selector, and what breaks when zone 2 is added |
+| 2 | **Audition `UI.Press` with F3** — `89108158102227`, your own Jungle upload | It is **1.06 s** against a brief asking ≤0.25 s. If it rings, a shorter switch from the same `Toggle Switch, Industrial` set replaces it. It fires on *every tap in the game*, so a tail becomes a melody |
+| 3 | At [the gate](roadmap/mvp.md#the-gate), **judge whether the sweep feels good** | A *feel* question, played, and the roadmap gates everything after zone 2 on it. Every ingredient now exists: the pull, the sound, a HUD showing what you earn, a hub worth returning to, and a first-run experience |
+| 4 | **Confirm [finding 0002](../findings/0002-magnet-flow-now-multiplies-scrap-not-coi.md)** — Magnet Flow now multiplies **scrap**, not Coins | Fixing the double mint was unambiguous; **where Flow's bonus lands is a balance call Claude made alone.** A Rush now fills the magnet faster instead of paying more per pickup, which interacts with the paid Capacity track. `Economy.TUNED` is still false |
+| 5 | **The Workshop half of the concept-art gap** — the loading screen half is done | Still a blockout: no ceiling, no conveyors, no floor arrows, and the machines are simpler than `assets/concept_art/Arena.png`. 🔴 **This half is parts work for `KitSpec`, not Meshy** — style §3 is parts-first and §5 names conveyors, floor arrows and crates as kit pieces. Job 015 established that; do not re-litigate it |
 | 6 | **Reopen the place before the next publish** | An earlier session reported `MaxPlayers = 60` after you set 12 on the web; publishing from a stale session could overwrite it |
 
 ---
@@ -191,15 +222,30 @@ and less obvious than either of those.
 
 ## 🖥️ Environment state, 2026-08-31
 
+⚠️ **Two instruments lied to me this session, and both are worth knowing before you trust a probe:**
+
+- **`execute_luau` runs in a SEPARATE Luau context.** `require`ing a stateful server module there
+  builds a **second copy with empty state**. It reported "no zones registered" while the server log
+  said the zone had registered fine. Verify through shared DataModel instances, never through a
+  re-required module ([#16](PITFALLS.md), [#17](PITFALLS.md)).
+- **`Model:GetBoundingBox()` returns size in the PIVOT's frame, not world axes.** A model whose pivot
+  has a 90° yaw reports its X and Z transposed. Measure from part positions when it matters.
+
+And the one that cost real money: **the command bar is privileged** — a `SurfaceAppearance` write
+that succeeds in `execute_luau` fails in a real `LocalScript` ([#63](PITFALLS.md), and #18/#48 said
+so already).
+
+
 Things a fresh session cannot discover by reading code.
 
 | | |
 |---|---|
+| **Verified after a Studio restart, 2026-08-31** | Studio restarted between sessions and the place **was** saved: `ReplicatedStorage.MagnetMesh` and `MagnetMesh_v1_craneMount` both survived. 🔴 That check matters more than it looks — the textured magnet lives **only in the `.rbxl`** (a script cannot write `SurfaceAppearance` maps, [#63](PITFALLS.md)), so an unsaved restart would have lost job 016's hero asset. Its five ids are in `Assets/registry/meshes.md` and `Config.Magnet.MESH` for exactly that reason. 🔴 **Sync was NOT verified, and my claim that it was is retracted.** I checked that `ZoneManager`, `ZoneBuilder` and `ReplicatedStorage.Zones` were *present* — but those arrived in the PREVIOUS session. Presence is not propagation. [#11](PITFALLS.md#11-reopening-a-place-silently-drops-the-sync-connection) says so in one line: *"a file saved into a dropped connection looks exactly like a file that synced."* **Sync has in fact been DOWN all session** (Studio reopened the place, which silently drops it): `script_grep` for two distinctive strings from this session's edits returns nothing. Reconnect it, then re-verify job 017's fixes in Play |
 | **Studio** | Open on the right place. **Restarted mid-session (PC reboot).** The place WAS saved first — the lighting and all four jobs' code survived |
 | **Studio Sync** | Dropped silently on the restart, then reconnected and **verified in both directions**. If anything looks stale, suspect this first ([#11](PITFALLS.md#11-reopening-a-place-silently-drops-the-sync-connection)) |
-| **Device Emulator** | Was ON (phone preset) for most of the session, then switched OFF by the owner — which is how the desktop layout finally got verified. It has **no scripting API**; ask the owner to flip it |
+| **Device Emulator** | **OFF** — the owner turned it on for the 2026-08-31 phone pass and switched back after. That pass measured canvas 666 × 374, `TouchEnabled` true, and 5 real reserved touch rects. It has **no scripting API**; ask the owner to flip it. Previously:  for most of the session, then switched OFF by the owner — which is how the desktop layout finally got verified. It has **no scripting API**; ask the owner to flip it |
 | **Lighting** | Saved into the place: ClockTime **14**, Brightness 2.5, Ambient 70/76/90, `EnvironmentSpecularScale` **0.30**. Bootstrap asserts these and warns on drift, because `Lighting` does not sync |
-| **Meshy MCP** | ✅ **CONNECTED and unused.** Job 015 was going to spend ~27 credits on 2D key art; the owner redirected to in-engine and **nothing was spent — balance still 1,240**. Meshy stays for hero *meshes* (style §3), not for screens. First connected 2026-08-31 (later session). It had failed with `CONNECT_TIMEOUT` earlier the same day; it came up on its own on the next start. Balance read back: **1,240 credits**. The owner has granted use of it and said not to worry about credits |
+| **Meshy MCP** | ✅ **CONNECTED and used.** Jobs 015/016 spent **87 credits** of 1,240 — 9+9+30 on a magnet built from the wrong reference (`Robot.png`, crane-mounted), then 9+30 on the shipped one from `Logo2.png`. Balance ~1,153. ⚠️ Use **2K** textures, not 4K: Roblox resamples uploads down and the 4K run produced a 16 MB file for no gain. Previously noted as:  Job 015 was going to spend ~27 credits on 2D key art; the owner redirected to in-engine and **nothing was spent — balance still 1,240**. Meshy stays for hero *meshes* (style §3), not for screens. First connected 2026-08-31 (later session). It had failed with `CONNECT_TIMEOUT` earlier the same day; it came up on its own on the next start. Balance read back: **1,240 credits**. The owner has granted use of it and said not to worry about credits |
 | **Studio's own AI** | `generate_mesh`, `generate_procedural_model` and `generate_material` ARE available. Different pipeline (no rigging, no remesh→retexture chain) but fine for static dressing and the loading-screen art |
 
 ---

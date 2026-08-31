@@ -6,10 +6,17 @@
 sourcemap.json
 
 # Meshy / asset working files (the published id is what we keep, not the blob)
-assets/meshy/**/*.glb
-assets/meshy/**/*.fbx
-assets/meshy/**/*.obj
-assets/meshy/**/*.zip
+#
+# The id lives in the shared Assets/registry/ and in Config; the blob is a build artifact that
+# Roblox already hosts. Job 016 committed 76 MB of a SUPERSEDED magnet before anyone noticed,
+# because it wrote to assets/generated/ and these rules only covered assets/meshy/.
+# Match on the extension wherever it lands, not on one directory name.
+**/*.glb
+**/*.fbx
+**/*.obj
+**/*.zip
+# Generated PBR maps -- these are the heavy ones (a 4K base_color is ~17 MB on its own).
+assets/generated/**/*_textures/*.png
 
 # OS / editor
 Thumbs.db
