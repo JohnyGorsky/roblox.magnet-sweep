@@ -42,6 +42,26 @@ local Remotes = require(need(ReplicatedStorage, "Remotes"))
 local MaterialKit = require(need(ReplicatedStorage, "MaterialKit"))
 local RateLimiter = require(need(script.Parent, "RateLimiter"))
 local RemoteBinder = require(need(script.Parent, "RemoteBinder"))
+
+--------------------------------------------------------------------------------
+-- 🔴 GENERATED WORLD: OFF.
+--
+-- The owner's ground rule, 2026-08-31: **the world is built in the EDITOR** so they can move it.
+-- `HubBuilder` and `ZoneBuilder` generate geometry from a spec at server start, which is the
+-- opposite of that — anything hand-placed would be sitting next to, or under, a room that rebuilds
+-- itself every Play.
+--
+-- ⚠️ Three separate things had to be switched off, not one:
+--   1. `HubBuilder.build()` — generates the ring of bases.
+--   2. `ZoneBuilder.build()` — generates zone 1, plus the scrap that fills it.
+--   3. `HubBuilder`'s `resolveGroundConflicts`, which **lowers any anchored part whose top sits at
+--      or above y = 0** near the hub. The hand-placed arena's tiles have their top at exactly y = 0,
+--      so it would have quietly dropped the entire arena two studs on the first Play — a "ground
+--      conflict" fix eating the thing it was meant to protect.
+--
+-- The code is kept, not deleted: the specs are still in git and the builders still work. Flip this
+-- to true to get the generated world back.
+local BUILD_GENERATED_WORLD = false
 local DevTools = require(need(script.Parent, "DevTools"))
 local ScrapService = require(need(script.Parent, "ScrapService"))
 local MagnetState = require(need(script.Parent, "MagnetState"))
@@ -408,7 +428,11 @@ end
 -- retiring the Workshop without moving the kit build would have broken every zone silently.
 --------------------------------------------------------------------------------
 
-do
+--- ⚠️ AN IIFE, not a bare `do ... end`. The guards inside use an early `return`, and inside a
+--- top-level do-block that returns from the WHOLE SCRIPT — it silently killed `MagnetState.start()`,
+--- `ScrapService` and every remote binding after this point, so the loading screen hung at PROFILE
+--- forever waiting for a stats push that could never arrive. The server log simply stopped.
+;(function()
 	local HubBuilder = require(need(script.Parent, "HubBuilder"))
 	local HubSpec = require(need(need(ReplicatedStorage, "Hub"), "HubSpec"))
 
@@ -436,6 +460,11 @@ do
 		return true, summary
 	end)
 
+	if not BUILD_GENERATED_WORLD then
+		Log.info("generated hub SKIPPED -- the world is hand-placed in the editor (see BUILD_GENERATED_WORLD)")
+		return
+	end
+
 	local root, parts, problems = HubBuilder.build()
 	for _, p in ipairs(problems) do
 		Log.error("HUB %s", p)
@@ -451,7 +480,7 @@ do
 			Log.error("the hub alone exceeds the in-view budget, and every base is visible from every other by design")
 		end
 	end
-end
+end)()
 
 --------------------------------------------------------------------------------
 -- The zones. Job 017 -- the factory stops being one room.
@@ -464,7 +493,7 @@ end
 --     `ZoneManager` for the spawn volumes rather than holding a path into a zone.
 --------------------------------------------------------------------------------
 
-do
+;(function()
 	local ZoneBuilder = require(need(script.Parent, "ZoneBuilder"))
 	local ZoneManager = require(need(script.Parent, "ZoneManager"))
 	local Zone1Spec = require(need(need(ReplicatedStorage, "Zones"), "Zone1Spec"))
@@ -495,6 +524,11 @@ do
 		return true, summary
 	end)
 
+	if not BUILD_GENERATED_WORLD then
+		Log.info("generated zone 1 SKIPPED -- hand-placed world")
+		return
+	end
+
 	local model, parts, problems = ZoneBuilder.build(Zone1Spec)
 	for _, p in ipairs(problems) do
 		Log.error("ZONE %s", p)
@@ -519,7 +553,7 @@ do
 			Log.error("the Workshop and zone 1 together exceed the in-view part budget, and eleven more zones are coming")
 		end
 	end
-end
+end)()
 
 MagnetState.start()
 ScrapService.init()
@@ -536,10 +570,13 @@ ScrapService.start()
 -- out of it.
 --------------------------------------------------------------------------------
 
-do
+;(function()
 	local ZoneManager = require(need(script.Parent, "ZoneManager"))
 	local Zone1Spec = require(need(need(ReplicatedStorage, "Zones"), "Zone1Spec"))
 
+	if not BUILD_GENERATED_WORLD then
+		return
+	end
 	local zone = ZoneManager.byTier(1)
 	if not zone then
 		--- Not fatal: the zone build already errored loudly above if it failed, and a Workshop with
@@ -560,18 +597,26 @@ do
 			Log.info("zone 1 scrap: %d placed across %d volume(s)", placed, #zone.spawnVolumes)
 		end
 	end
-end
+end)()
 
 --------------------------------------------------------------------------------
 -- The stations. Job 013 -- the Workshop stops being scenery.
 --------------------------------------------------------------------------------
 
-do
+;(function()
 	local StationService = require(need(script.Parent, "StationService"))
 
-	local attached, stationProblems = StationService.attachPrompts()
-	for _, p in ipairs(stationProblems) do
-		Log.error("STATIONS %s", p)
+	--- ⚠️ With the generated hub off there are no bases to attach prompts to, and that is expected
+	--- rather than broken. Reporting it as an error every start would train everyone to ignore the
+	--- station errors that DO matter.
+	local attached, stationProblems = 0, {}
+	if BUILD_GENERATED_WORLD then
+		attached, stationProblems = StationService.attachPrompts()
+		for _, p in ipairs(stationProblems) do
+			Log.error("STATIONS %s", p)
+		end
+	else
+		Log.info("station prompts SKIPPED -- no generated bases; hand-placed fixtures will be wired by name")
 	end
 	--- ⚠️ Against the DENOMINATOR. "stations: 5 prompt(s) attached" and "stations: 7" look equally
 	--- healthy in scrollback -- this file makes exactly that complaint about part counts twenty
@@ -579,7 +624,7 @@ do
 	local HubSpec = require(need(need(ReplicatedStorage, "Hub"), "HubSpec"))
 	--- ⚠️ Fixtures TIMES bases. Three per base across twelve bases is 36 prompts, and comparing
 	--- against 3 would call a hub with one base healthy.
-	local wanted = #HubSpec.FIXTURES * HubSpec.BASES
+	local wanted = BUILD_GENERATED_WORLD and (#HubSpec.FIXTURES * HubSpec.BASES) or 0
 	if attached < wanted then
 		Log.error("stations: only %d of %d prompts attached", attached, wanted)
 	else
@@ -623,7 +668,7 @@ do
 		end
 		return true, ("%d prompt(s) attached"):format(n)
 	end)
-end
+end)()
 
 RemoteBinder.bindEvent("ClaimScrap", function(player: Player, ids: any)
 	local accepted, value, reason = ScrapService.claim(player, ids)

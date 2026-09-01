@@ -703,19 +703,15 @@ local STAGES: { Stage } = {
 			if not root then
 				return false
 			end
-			--- 🔴 `Hub`, not `Workshop`. Job 019 replaced the hall with the ring of bases and renamed
-			--- the folder, and this line kept looking for the old name — so PLACE could never
-			--- complete, the screen sat on "WAITING FOR THE WORLD TO STREAM IN" for the full 90 s,
-			--- and only the watchdog released it. The ground ray beneath it was passing the whole
-			--- time.
+			--- 🔴 NO FOLDER-NAME CHECK. This looked for `workspace.Workshop`, then `workspace.Hub`,
+			--- and each rename silently broke it: PLACE could never complete, the screen sat on
+			--- "WAITING FOR THE WORLD TO STREAM IN" for the full 90 s, and only the watchdog
+			--- released the player. **Twice.**
 			---
-			--- ⚠️ A literal, and it has to be: this file runs in `ReplicatedFirst` and may not
-			--- require `ReplicatedStorage` for a shared constant. So the name is checked against
-			--- what actually exists, and says so out loud when it does not.
-			local hub = workspace:FindFirstChild("Hub")
-			if not hub then
-				return false
-			end
+			--- The world is hand-placed now and its top-level names are the owner's to choose, so a
+			--- name in here is a hostage to a rename that has nothing to do with booting. The ray
+			--- below is the check that actually matters and always was — "is there ground under this
+			--- player's feet" does not care what the folder is called.
 			local params = RaycastParams.new()
 			params.FilterType = Enum.RaycastFilterType.Exclude
 			-- the character is known non-nil here: `root` was found inside it
