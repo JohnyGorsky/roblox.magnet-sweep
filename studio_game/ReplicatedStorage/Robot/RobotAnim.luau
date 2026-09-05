@@ -179,14 +179,26 @@ end
 
 --- `ArmShoulder` / `ArmElbow` resolve to a real joint for the side the attack is on.
 --- ⚠️ Anything else passes through unchanged, so shared clips keep naming joints directly.
-local function resolve(name: string, side: string?): string
-	local s = (side == "Left") and "Left" or "Right"
-	if name == "ArmShoulder" then
-		return s .. "Shoulder"
-	elseif name == "ArmElbow" then
-		return s .. "Elbow"
+--- Returns the joint name and whether the motion needs mirroring.
+local function resolve(name: string, side: string?): (string, boolean)
+	local isArm = (name == "ArmShoulder") or (name == "ArmElbow")
+	if not isArm then
+		return name, false
 	end
-	return name
+	local s = (side == "Left") and "Left" or "Right"
+	local joint = (name == "ArmShoulder") and (s .. "Shoulder") or (s .. "Elbow")
+	--- 🔴 THE TWO SHOULDERS ARE MIRRORED. The same Y rotation swings one arm forward and the other
+	--- BACKWARD, so an attack authored on the left punched behind the robot when run on the right.
+	--- Attack clips are authored for the LEFT arm; the right is the mirror image.
+	return joint, (s == "Right")
+end
+
+--- Mirror a limb rotation across the robot's sagittal plane: rotations about Y and Z flip sign,
+--- rotation about X (the swing plane itself) does not. Position mirrors in X.
+local function mirror(cf: CFrame): CFrame
+	local x, y, z = cf:ToEulerAnglesXYZ()
+	local p = cf.Position
+	return CFrame.new(-p.X, p.Y, p.Z) * CFrame.Angles(x, -y, -z)
 end
 
 local function step(dt: number)
@@ -204,11 +216,12 @@ local function step(dt: number)
 		end
 
 		for name, fn in pairs(p.clip.tracks) do
-			local real = resolve(name, p.side)
+			local real, needsMirror = resolve(name, p.side)
 			local j = p.joints[real]
 			local r = p.rest[real]
 			if j and r then
-				j.C0 = r * fn(phase)
+				local off = fn(phase)
+				j.C0 = r * (needsMirror and mirror(off) or off)
 			end
 		end
 
