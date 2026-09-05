@@ -35,47 +35,58 @@ export type ScrapDef = {
 	weightShare: number, -- relative spawn frequency within the tier
 }
 
+
+--- 🔴 SIZES ARE 2.5x THE ORIGINAL SPEC, changed 2026-09-05 after standing them in the demo room
+--- next to a player. At spec size four of the twelve were UNDER ONE STUD -- 12-18% of a 5-stud
+--- character -- and read as specks on an empty pedestal from three paces away. A collectable the
+--- player cannot see is a core loop the player cannot read.
+---
+--- ⚠️ Only `size` moved. `weight`, `value` and `weightShare` are untouched, so the gameplay ladder
+--- and the economy are exactly as they were -- this is a readability change, not a balance one.
 local ScrapSpec = {}
 
 ScrapSpec.TIER1 = {
 	{
 		id = "SCREW", name = "Screw", tier = 1, weight = 2, value = 1,
-		size = { 0.9, 0.3, 0.3 }, shape = "Cylinder", along = "X",
+		size = { 2.25, 0.75, 0.75 }, shape = "Cylinder", along = "X",
 		surface = "SteelBrushed", sound = "Bolt", weightShare = 26,
 	},
 	{
 		id = "NUT", name = "Nut", tier = 1, weight = 3, value = 1,
-		size = { 0.7, 0.7, 0.35 },
+		size = { 1.75, 1.75, 0.875 },
 		surface = "SteelBrushed", sound = "Bolt", weightShare = 22,
 	},
 	{
 		id = "WASHER", name = "Washer", tier = 1, weight = 2, value = 1,
-		size = { 0.8, 0.15, 0.8 }, shape = "Cylinder", along = "Y",
+		size = { 2, 0.375, 2 }, shape = "Cylinder", along = "Y",
 		surface = "Chrome", sound = "Coin", weightShare = 18,
 	},
 	{
 		id = "BOLT", name = "Bolt", tier = 1, weight = 4, value = 2,
-		size = { 1.4, 0.4, 0.4 }, shape = "Cylinder", along = "X",
+		size = { 3.5, 1, 1 }, shape = "Cylinder", along = "X",
 		surface = "SteelBrushed", sound = "Bolt", weightShare = 16,
 	},
 	{
 		id = "GEAR", name = "Gear", tier = 1, weight = 6, value = 3,
-		size = { 1.6, 0.3, 1.6 }, shape = "Cylinder", along = "Y",
+		size = { 4, 0.75, 4 }, shape = "Cylinder", along = "Y",
 		surface = "SteelDark", sound = "Gear", weightShare = 9,
 	},
 	{
 		id = "SPRING", name = "Spring", tier = 1, weight = 5, value = 3,
-		size = { 0.5, 1.4, 0.5 }, shape = "Cylinder", along = "Y",
+		size = { 1.25, 3.5, 1.25 }, shape = "Cylinder", along = "Y",
 		surface = "Chrome", sound = "Spring", weightShare = 5,
 	},
 	{
 		id = "BEAD", name = "Metal Bead", tier = 1, weight = 1, value = 1,
-		size = { 0.6, 0.6, 0.6 }, shape = "Ball",
+		size = { 1.5, 1.5, 1.5 }, shape = "Ball",
 		surface = "Chrome", sound = "Coin", weightShare = 3,
 	},
 	{
 		id = "PIPE", name = "Small Pipe", tier = 1, weight = 12, value = 5,
-		size = { 3, 0.7, 0.7 }, shape = "Cylinder", along = "X",
+		--- ⚠️ CHUNKY, not long. The generated mesh is a short flanged section roughly 1:1:1, so the
+		--- old 7.5 x 1.75 x 1.75 would have stretched it into a smear. Owner's call 2026-09-05:
+		--- keep the mesh and place SEVERAL pipes rather than one long one. Size matches the mesh.
+		size = { 3.5, 3.5, 3.4 },
 		surface = "Rust", sound = "Tool", weightShare = 1,
 	},
 } :: { ScrapDef }
@@ -98,22 +109,22 @@ ScrapSpec.TIER1 = {
 ScrapSpec.TIER2 = {
 	{
 		id = "BLOCK", name = "Metal Block", tier = 2, weight = 8, value = 4,
-		size = { 1.1, 1.1, 1.1 },
+		size = { 2.75, 2.75, 2.75 },
 		surface = "PaintedGloss", color = "#2F6BE8", sound = "Tool", weightShare = 30,
 	},
 	{
 		id = "WINDUP", name = "Wind-Up Mechanism", tier = 2, weight = 11, value = 6,
-		size = { 1.2, 0.5, 1.2 }, shape = "Cylinder", along = "Y",
+		size = { 3, 1.25, 3 }, shape = "Cylinder", along = "Y",
 		surface = "Chrome", sound = "Gear", weightShare = 24,
 	},
 	{
 		id = "TOY_CAR", name = "Toy Car", tier = 2, weight = 16, value = 9,
-		size = { 2.4, 0.9, 1.2 },
+		size = { 6, 2.25, 3 },
 		surface = "PaintedGloss", color = "#FF8A6B", sound = "Vehicle", weightShare = 16,
 	},
 	{
 		id = "TOY_ROBOT", name = "Toy Robot", tier = 2, weight = 26, value = 15,
-		size = { 1.2, 2.0, 0.9 },
+		size = { 3, 5, 2.25 },
 		surface = "PaintedWorn", color = "#8FD63F", sound = "Machine", weightShare = 8,
 	},
 } :: { ScrapDef }
