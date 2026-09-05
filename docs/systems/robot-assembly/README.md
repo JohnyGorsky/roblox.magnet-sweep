@@ -17,6 +17,37 @@ The Robot Bay: where a fridge door becomes armour. The rig itself is
 
 Arms are interchangeable. **Giant Spoon + STOP Sign** is a legal build and the design actively wants it.
 
+## The starter robot — decided 2026-09-05
+
+**The game GIVES a new player a fixed, assembled robot.** Head, Core, Body, one Arm and one Mobility,
+already bolted together. Everything found afterwards *replaces* a piece.
+
+🔴 **This exists because the catalog cannot supply a first robot on its own.** Measured against
+`docs/content/parts-catalog.md`:
+
+| Tier | Slots with a Common part | Slots with **none** |
+|---|---|---|
+| 1 | Body, Core, Head | **Arm, Back, Mobility** |
+| 2 | Arm, Body, Head | **Back, Core, Mobility** |
+| 3 | Core, Head, Mobility | **Arm, Back, Body** |
+| 4 | Core, Head | **Arm, Back, Body, Mobility** |
+
+**No tier has a Common for every slot.** A robot built only from Commons in the Color Workshop is a
+head, a core and a torso — it cannot move and it cannot fight. Standing one on a pad, it reads as
+broken rather than as unfinished, which is exactly how it was received.
+
+⚠️ `docs/systems/boot` defines the starter **magnet** (Power 10 · Radius 12 · Drive 16 · Capacity 30)
+and says nothing about a starter **robot**. That gap is what this section closes.
+
+**Why "given" rather than "add Common parts to every tier":**
+- Swapping your first *found* part into a working robot reads as an upgrade. Finding the piece that
+  finally makes your robot able to move reads as having been broken until then.
+- Filling the holes would need a Common Arm, Back and Mobility in tier 1 alone, and the same again in
+  tiers 2, 3 and 4 — a dozen catalog entries and a dozen models to fix a first-five-minutes problem.
+
+**Still to decide:** which specific parts the starter loadout uses, and whether they are real catalog
+entries (findable, recyclable) or a distinct "rusty starter" set that exists only at spawn.
+
 ## The visual philosophy (section 39)
 
 Robots must look **homemade**. Not sleek humanoid sci-fi.
