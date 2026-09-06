@@ -124,11 +124,13 @@ Every one of these has already cost this project time.
 
 ## Checklist
 
-- [ ] Requirements reviewed (this intake)
-- [ ] **Independent reviewer agent run** — given the requirement, NOT my theory (GROUND-RULES 8)
-- [ ] Concept art re-read and the layer structure agreed
-- [ ] Existing kit + meshes checked before any new asset is generated
-- [ ] Implementation plan created & agreed
+- [x] Requirements reviewed (this intake)
+- [x] **Independent reviewer agent run** — given the requirement, NOT my theory (GROUND-RULES 8).
+      It corrected the intake in six places; see the plan §2.
+- [x] Concept art re-read and the layer structure agreed — 4 layers, plan §4
+- [x] Existing kit + meshes checked before any new asset is generated — plan §5
+- [x] Implementation plan created — [`implementation-plan.md`](implementation-plan.md); design agreed
+      with the owner 2026-09-06, build not yet started
 - [ ] Implementation completed
 - [ ] **Proof it works better** — before/after from the same camera, in Play, at eye level
 - [ ] Exported to `WorkshopLayout.luau` (decision 0019)
