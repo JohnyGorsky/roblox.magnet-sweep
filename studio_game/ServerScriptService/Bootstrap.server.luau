@@ -75,6 +75,9 @@ local Economy = require(need(ConfigFolder, "Economy"))
 local Quality = require(need(ConfigFolder, "Quality"))
 local KitSpec = require(need(need(ReplicatedStorage, "Kit"), "KitSpec"))
 local Perf = require(need(ConfigFolder, "Perf"))
+local StarterRobot = require(need(ConfigFolder, "StarterRobot"))
+local PartArt = require(need(ConfigFolder, "PartArt"))
+local PartsCatalog = require(need(ConfigFolder, "PartsCatalog"))
 local Vfx = require(need(ConfigFolder, "Vfx"))
 local SoundKit = require(need(ReplicatedStorage, "SoundKit"))
 
@@ -634,6 +637,126 @@ end)()
 	else
 		Log.info("stations: %d/%d prompts attached", attached, wanted)
 	end
+
+	--- 🔴 BASE CLAIMING. Job 020 stamped `Claimed = false` on ten bays and nothing ever set it;
+	--- `Config/WorkshopLayout.luau:217` records that gap. Order matters: the plates must EXIST
+	--- before the first claim fires, or the player already in a Studio Play session gets a bay with
+	--- no sign. `BaseClaimService.start` sweeps `Players:GetPlayers()`, so that is not theoretical.
+	local BaseNameplate = require(need(script.Parent, "BaseNameplate"))
+	local BaseClaimService = require(need(script.Parent, "BaseClaimService"))
+	local RobotSpawner = require(need(script.Parent, "RobotSpawner"))
+	local PlayerProfile = require(need(script.Parent, "PlayerProfile"))
+
+	--- 🔴 PROFILES START FIRST, and the order is load-bearing. `RobotSpawner` builds a robot from the
+	--- player's saved loadout, so a claim that fires before the profile exists would silently build a
+	--- default robot and then be overwritten. Both services sweep `Players:GetPlayers()` on start, so
+	--- in a Studio Play session -- where the local player joins before server scripts finish -- this
+	--- is the normal path, not an edge case.
+	PlayerProfile.start()
+
+	--- The rusty starter set is validated against the real schema at startup, so a typo in a def
+	--- fails here with a name rather than in the Arena with a nil index.
+	local starterProblems = StarterRobot.validate(Parts)
+	if #starterProblems > 0 then
+		Log.error("STARTER ROBOT config invalid: %s", table.concat(starterProblems, " | "))
+	else
+		local n = 0
+		for _ in pairs(StarterRobot.PARTS) do
+			n += 1
+		end
+		Log.info("starter robot: %d rusty part(s) valid, loadout %d slot(s), scrapValue 0 (not farmable)",
+			n, (function()
+				local c = 0
+				for _ in pairs(StarterRobot.LOADOUT) do
+					c += 1
+				end
+				return c
+			end)())
+	end
+
+	--- 🔴 Finding 0014 as a NUMBER on every boot, not a surprise the first time someone tries to
+	--- equip a tier-3 part. An unbound part fails loudly in RobotAssembler and leaves the socket
+	--- empty, which is correct -- but the size of the gap should never be a discovery.
+	local art = PartArt.audit(PartsCatalog)
+	if art.missing > 0 then
+		local tiers = {}
+		for tier = 1, 12 do
+			if art.missingByTier[tier] then
+				table.insert(tiers, ("t%d:%d"):format(tier, art.missingByTier[tier]))
+			end
+		end
+		Log.warn("PART ART: %d/%d catalog parts have a mesh binding; %d cannot be equipped (%s) -- finding 0014",
+			art.covered, art.covered + art.missing, art.missing, table.concat(tiers, " "))
+	else
+		Log.info("PART ART: all %d catalog parts have a mesh binding", art.covered)
+	end
+
+	BaseNameplate.build()
+
+	--- Both the sign and the robot hang off the same claim. Combined here rather than letting
+	--- `BaseClaimService` know either of them exists -- it owns the mapping and nothing else.
+	--- ⚠️ Each hook is separately pcall'd inside `BaseClaimService`, so a thrown nameplate does not
+	--- cost the player their robot, or vice versa.
+	local plateHooks = BaseNameplate.hooks()
+	local robotHooks = RobotSpawner.hooks()
+	BaseClaimService.start({
+		onClaim = function(player, base)
+			plateHooks.onClaim(player, base)
+			robotHooks.onClaim(player, base)
+		end,
+		onRelease = function(player, base)
+			plateHooks.onRelease(player, base)
+			robotHooks.onRelease(player, base)
+		end,
+	})
+
+	--- ⚠️ These exist because a profile CANNOT be inspected or mutated from `execute_luau`:
+	--- requiring a module there builds a SECOND copy with its own empty state, which is how job 008
+	--- produced two confidently wrong readings. Going through the dev remote hits the real module.
+	DevTools.register("profile.dump", "Show your loaded profile", function(player: Player)
+		local p = PlayerProfile.get(player)
+		if not p then
+			return false, "no profile loaded"
+		end
+		local slots = {}
+		for slot, id in pairs(PlayerProfile.loadout(player)) do
+			table.insert(slots, ("%s=%s"):format(slot, id))
+		end
+		table.sort(slots)
+		return true, ("v%d | sessionOnly=%s | createdAt=%s | %s"):format(
+			p.version, tostring(PlayerProfile.isSessionOnly(player)), tostring(p.createdAt),
+			table.concat(slots, " "))
+	end)
+
+	DevTools.register("profile.slot", "profile.slot Arm PIPE_WRENCH -- set a slot and save now",
+		function(player: Player, slot: unknown, partId: unknown)
+			if type(slot) ~= "string" then
+				return false, "usage: profile.slot <Slot> <PARTID>"
+			end
+			local ok = PlayerProfile.setSlot(player, slot, type(partId) == "string" and partId or nil)
+			if not ok then
+				return false, "no profile to change"
+			end
+			--- save immediately rather than waiting for the auto-save, so a round-trip test is not
+			--- a 60-second wait
+			local saved = PlayerProfile.save(player, false)
+			return true, ("%s -> %s | saved=%s"):format(slot, tostring(partId), tostring(saved))
+		end)
+
+	DevTools.register("base.who", "Which player holds which bay", function()
+		local snap = BaseClaimService.snapshot()
+		local rows, n = {}, 0
+		for idx, userId in pairs(snap) do
+			n += 1
+			local p = Players:GetPlayerByUserId(userId)
+			table.insert(rows, ("bay %d = %s"):format(idx, p and p.Name or ("userId " .. userId)))
+		end
+		table.sort(rows)
+		if n == 0 then
+			return true, ("0 of %d bays claimed"):format(BaseClaimService.count())
+		end
+		return true, ("%d of %d claimed | %s"):format(n, BaseClaimService.count(), table.concat(rows, ", "))
+	end)
 
 	--- 🔴 The server decides whether the player is at the entrance, not the prompt. See
 	--- `StationService.enterZone`: a `ProximityPrompt` fires on the CLIENT, so without the check a
