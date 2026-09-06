@@ -246,16 +246,37 @@ in the bases and this one becomes a prop. Import, security scan and registry ent
 
 ## Still outstanding
 
-- **The floor tile size** (above) — the one thing blocking "the room is finished".
+⚠️ Rewritten 2026-09-06 after the ×0.5 rescale and the owner's hand rearrangement — the earlier list
+quoted pre-rescale numbers (48-stud wall, 925-stud room, buildings on a r=300 ring) that no longer
+describe anything.
+
+**Resolved since:**
+- ~~Floor tile size~~ — the ×0.5 world rescale took it from 32 to **15.8** without laying a tile.
+- ~~Stations too far apart~~ — the owner moved the seven shared buildings to the wall either side of
+  the Factory Entrance. Walking all seven went from **628 studs to well under 100**.
+- ~~Twelve bases vs the cap~~ — two facets became shop frontage, so it is **10 bases and
+  `MaxPlayers = 10`**, decided and recorded.
+
+**Open, in rough priority:**
+- 🔴 **The room has no background** — open sky sits directly above a 24-stud wall around a 489-stud
+  room, so it reads flat and wide. **This is now [job 021](../021/intake.md).**
+- 🔴 **`MaxPlayers` must be set to 10 on the Creator Hub** (it says 12; this Studio session still
+  caches 60). Read-only from scripts — a human action, and publishing from the stale session can push
+  60 back over it.
+- **Lighting has drifted from the concept art** and Bootstrap warns on every start: `ClockTime` 15.60
+  against a wanted 16.50–18.50, `EnvironmentSpecularScale` 0.40 against 0.45–0.90. A place setting
+  only a human can change — `Lighting.Technology` and its successors are `RobloxScriptSecurity`.
+- **The plaza is empty.** With the shops now at the wall, r 64…190 is a large bare floor between the
+  Arena collar and the base ring. Job 021's backdrop will help the horizon but not the floor.
 - **Dormant bases are not dark.** `docs/systems/player-base` says an unclaimed base is *"unlit,
-  powered down"*. They have no robot and no ingots, but the furnace mesh still glows. Needs a
-  material/light pass, and nothing claims a base yet anyway.
-- **The plaza between r=127 and r=300 is a large empty plain.** Legible from above, thin at eye
-  level. The reviewer predicted "scattered kiosks on an empty plain" and it is partly true — the
-  seven buildings total ~154 studs of frontage on a 1,885-stud circumference.
-- **No ceiling, open sky, `FogEnd = 100000`.** A 48-stud wall around a 925-stud room does close the
-  horizon from eye level, but the room reads flat and wide. Probably its own job.
+  powered down"*; the furnace mesh still glows on all ten. Nothing claims a base yet regardless.
+- **Two stations face away from the room** — `MagnetLab` reads dot +0.39 and `ScrapArena` dot −0.99
+  against "faces the room". **The owner inspected these and said they are correct as placed** — noted
+  here so nobody "fixes" them.
 - `HubBuilder` / `HubSpec` / `WorkshopBuilder` still present and now describe nothing that exists.
-- Attachments were added for `Interact` and `RobotHang`, but the job-019 gap stands: **the building
-  meshes still carry no feature attachments of their own**, so a mouth or a socket is still a
-  bounding-box guess.
+- **The building meshes carry no feature attachments of their own.** `Interact` and `RobotHang` were
+  added at placement, but a mouth or socket is still a bounding-box guess — job 019's lesson, still
+  unpaid.
+- **The Meshy gantry crane is generated but not imported** —
+  `assets/generated/crane/gantry_crane_v1.glb` + 5 PBR maps, 30 credits spent. `.gitignore` excludes
+  `*.glb`, so it exists on disk only. Intended as a prop.
