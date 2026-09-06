@@ -40,7 +40,8 @@
 	**Tiers 1 and 2: 16 of 16.** Those are the only tiers a player can currently reach -- zone 1 is
 	the only built zone -- so this unblocks the whole early loop: find a part, install it, see it.
 
-	**Tiers 3-12: 0 of 80.** Their meshes do not exist yet. That is a Meshy programme costed at
+	**Tier 3: 8 of 8** (generated 2026-09-06, `mountFrac` still [UNTUNED]).
+	**Tiers 4-12: 0 of 72.** Their meshes do not exist yet. That is a Meshy programme costed at
 	~2,400 credits, not a config task, and it is art for zones that have not been built. Anything not
 	listed here fails LOUDLY in `RobotAssembler` and leaves the socket empty, per non-negotiable #10.
 
@@ -79,6 +80,32 @@ PartArt.BY_PART = {
 	--- mounted it by hand and it read correctly on the rig. Treat as [UNTUNED] and re-measure once it
 	--- has stood in a demo robot.
 	GRABBER_CLAW = { mesh = "grabber_claw", scale = 2.60, mountFrac = Vector3.new(0.00, 0.00, -1.00) },
+
+	----------------------------------------------------------------------------
+	-- Tier 3 — Mega Kitchen. Generated 2026-09-06, 240 Meshy credits.
+	--
+	-- ⚠️ [UNTUNED] — these `mountFrac` values are a FIRST PASS by slot convention, not measurements
+	-- off an approved assembly, because there was no tier-3 assembly to measure until this job built
+	-- one. They are good enough to stand a robot up (see `DemoRoom.14_Tier3Robot`) and want the
+	-- owner's eye before they are trusted the way the tier-1/2 numbers are.
+	--
+	-- 🔴 `mountRoll` IS NOT COSMETIC. These meshes normalise with their LENGTH along local X, while
+	-- the older tier-1/2 imports run theirs along local Y. A shoulder roll swings a Y-length part
+	-- DOWN and an X-length part SIDEWAYS, so an arm part needs a 90 deg roll to hang at all — and
+	-- the SIGN MIRRORS per side, exactly as the shoulder stance signs do. Measured by sweep:
+	-- left +90 gives -60.1 deg, right -90 gives -38.5 deg; the wrong sign puts the arm at +74 deg,
+	-- pointing at the ceiling. `nil`/0 means "no roll needed", which is right for every non-arm slot
+	-- and for the Y-length older meshes.
+	----------------------------------------------------------------------------
+	COLANDER = { mesh = "colander", scale = 1.68, mountFrac = Vector3.new(0.00, -1.00, 0.00) },
+	BLENDER_MOTOR = { mesh = "blender_motor", scale = 1.37, mountFrac = Vector3.new(0.00, 0.00, -1.00) },
+	REFRIGERATOR_DOOR = { mesh = "refrigerator_door", scale = 3.42, mountFrac = Vector3.new(0.00, 0.00, 0.00) },
+	SERVING_CART_WHEELS = { mesh = "serving_cart_wheels", scale = 2.37, mountFrac = Vector3.new(0.00, 1.00, 0.00) },
+	TOASTER_COIL = { mesh = "toaster_coil", scale = 2.11, mountFrac = Vector3.new(0.00, 0.00, -1.00) },
+	--- the three X-length arms: they need the mirrored roll or they point at the ceiling
+	GIANT_SPOON = { mesh = "giant_spoon", scale = 2.90, mountFrac = Vector3.new(-0.85, 0.00, 0.00), mountRoll = 90 },
+	FRYING_PAN = { mesh = "frying_pan", scale = 2.90, mountFrac = Vector3.new(-0.85, 0.00, 0.00), mountRoll = 90 },
+	GOLDEN_TENDERIZER = { mesh = "golden_tenderizer", scale = 2.90, mountFrac = Vector3.new(-0.85, 0.00, 0.00), mountRoll = 90 },
 }
 
 function PartArt.get(partId: string)

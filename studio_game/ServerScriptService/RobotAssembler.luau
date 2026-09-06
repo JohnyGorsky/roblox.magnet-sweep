@@ -161,11 +161,33 @@ function RobotAssembler.mount(rig: Instance, partId: string, preferSocket: strin
 	mount.Position = local_
 	mount.Parent = part
 
+	--- 🔴 A MOUNT NEEDS AN ORIENTATION, NOT JUST A POSITION.
+	---
+	--- `mountFrac` says WHERE on the part the socket grips. It cannot say WHICH WAY the part points,
+	--- and that is not academic: the tier-1/2 meshes normalise with their length along local **Y**,
+	--- the tier-3 imports along local **X**. A shoulder roll swings a Y-length part DOWN and an
+	--- X-length part SIDEWAYS. Measured on the tier-3 robot: with no roll the Giant Spoon sat at
+	--- **+74 deg**, pointing at the ceiling.
+	---
+	--- ⚠️ AND THE SIGN MIRRORS PER SIDE, exactly as `RobotAnim`'s shoulder signs do. By sweep:
+	--- left `+90` -> -60.1 deg, right `-90` -> -38.5 deg. Using one sign for both puts one arm up.
+	--- So `mountRoll` is stored for the LEFT arm and negated on the right.
+	local roll = def.mountRoll
+	local rot = CFrame.identity
+	if roll and roll ~= 0 then
+		local sign = (preferSocket == "RightArmSocket") and -1 or 1
+		rot = CFrame.Angles(0, 0, math.rad(roll * sign))
+	end
+
 	--- Solve for the part CFrame that puts its mount exactly on the socket:
-	---   partCF * mountLocal = socketWorld   ->   partCF = socketWorld * mountLocal:Inverse()
+	---   partCF * rot * mountLocal = socketWorld  ->  partCF = socketWorld * rot * mountLocal:Inv
 	--- Built from the socket's own WorldCFrame, so it inherits the joint's orientation and follows
 	--- the limb when the rig animates.
-	part.CFrame = socket.WorldCFrame * CFrame.new(local_):Inverse()
+	---
+	--- 🔴 POSITION FIRST, WELD SECOND — the weld below records its offset when it is created.
+	--- Repositioning an already-welded part makes the weld fight the new placement, and the whole
+	--- assembly tears itself apart the moment it is unanchored. Seen and photographed.
+	part.CFrame = socket.WorldCFrame * rot * CFrame.new(local_):Inverse()
 
 	--- weld to the socket's owner, which is the pivot the Motor6D chain drives
 	local host = socket.Parent
