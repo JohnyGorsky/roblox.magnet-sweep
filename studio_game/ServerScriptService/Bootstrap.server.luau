@@ -606,26 +606,30 @@ end)()
 ;(function()
 	local StationService = require(need(script.Parent, "StationService"))
 
-	--- ⚠️ With the generated hub off there are no bases to attach prompts to, and that is expected
-	--- rather than broken. Reporting it as an error every start would train everyone to ignore the
-	--- station errors that DO matter.
-	local attached, stationProblems = 0, {}
-	if BUILD_GENERATED_WORLD then
-		attached, stationProblems = StationService.attachPrompts()
-		for _, p in ipairs(stationProblems) do
-			Log.error("STATIONS %s", p)
-		end
-	else
-		Log.info("station prompts SKIPPED -- no generated bases; hand-placed fixtures will be wired by name")
+	--- 🔴 ALWAYS attach, whatever `BUILD_GENERATED_WORLD` says. Job 020 hand-placed the Workshop in
+	--- the editor and stamped `StationId` on every fixture, so the stations exist while the
+	--- generator stays off — and this used to skip on exactly that condition, leaving seven
+	--- buildings and twelve smelters as silent scenery with `RequestRecycle`, the Magnet Lab
+	--- upgrade and `enterZone` all answering "the hub is not built".
+	---
+	--- The old branch promised "hand-placed fixtures will be wired by name". Nothing ever did that,
+	--- and nothing should: `collectStations` finds them by ATTRIBUTE, which survives every nudge.
+	local attached, stationProblems = StationService.attachPrompts()
+	for _, p in ipairs(stationProblems) do
+		Log.error("STATIONS %s", p)
 	end
 	--- ⚠️ Against the DENOMINATOR. "stations: 5 prompt(s) attached" and "stations: 7" look equally
 	--- healthy in scrollback -- this file makes exactly that complaint about part counts twenty
 	--- lines earlier and then did not apply it here.
-	local HubSpec = require(need(need(ReplicatedStorage, "Hub"), "HubSpec"))
-	--- ⚠️ Fixtures TIMES bases. Three per base across twelve bases is 36 prompts, and comparing
-	--- against 3 would call a hub with one base healthy.
-	local wanted = BUILD_GENERATED_WORLD and (#HubSpec.FIXTURES * HubSpec.BASES) or 0
-	if attached < wanted then
+	---
+	--- 🔴 Counted from the WORLD, not from `HubSpec`. The old denominator was
+	--- `#HubSpec.FIXTURES * HubSpec.BASES` — a spec describing the twelve-base room job 019
+	--- deleted. With the generator off that evaluated to 0, so any number of attached prompts
+	--- compared favourably and a totally dead Workshop logged as healthy.
+	local wanted = StationService.stationCount()
+	if wanted == 0 then
+		Log.error("stations: NO fixture in Workspace.Hub carries a StationId -- the room is scenery")
+	elseif attached < wanted then
 		Log.error("stations: only %d of %d prompts attached", attached, wanted)
 	else
 		Log.info("stations: %d/%d prompts attached", attached, wanted)

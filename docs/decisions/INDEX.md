@@ -23,6 +23,7 @@ new record that says so and link it from here.
 | [0016](0016-low-tier-drops-the-variant.md) | The Low tier drops the MaterialVariant | Reflectance is inert on `Metal`, so it is not a fallback. Amends 0012 |
 | [0017](0017-the-kit-is-generated-from-a-spec.md) | The kit is generated from a spec, on a 4-stud grid | `Workspace` does not sync, so a hand-built kit could never be in git |
 | [0018](0018-full-stops-the-pull-not-the-grant.md) | SCRAP FULL stops the pull; Flow does not build during a Rush | Refusing at the grant instead spun the claim loop at 93% rejection, and a charging Rush never ends |
+| [0019](0019-hero-geometry-is-editor-placed-and-exported.md) | Hero rooms are placed in the editor, then exported to git; the kit and the zones stay generated | Job 019's ring failed on *proportion*, which a viewport judges and a spec file cannot — but an unexported room lives only in the unversioned `.rbxl` |
 
 ## Answered by the user, 2026-08-29
 
@@ -41,7 +42,7 @@ written into their system docs:
 | A deployed robot gets a ~2 min grace period when its owner leaves | [arena](../systems/arena/README.md#when-the-owner-leaves) |
 | The Part Archive records **secured**, not discovered | [save-data](../systems/save-data/README.md#the-part-archive-stores-secured-not-discovered) |
 | Six Service Hubs, after zones 2/4/6/8/10/12 | [factory](../systems/factory/README.md#service-hubs-section-18) |
-| `MaxPlayers` = 12 | [places](../systems/places/README.md) |
+| `MaxPlayers` = **10** (was 12; two facets became shop frontage, 2026-09-06) | [places](../systems/places/README.md) |
 | Robot paints apply **per part** | [cosmetics](../content/cosmetics.md) |
 | Magnet Core Level = starting Power + a gate discount | [0013](0013-overclock-not-rebirth.md#how-magnet-core-level-bends-the-curve) |
 

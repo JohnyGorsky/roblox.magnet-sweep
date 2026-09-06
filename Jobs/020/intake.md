@@ -2,7 +2,7 @@
 
 **Project**: `roblox.magnet-sweep`
 **Created**: 2026-09-06 00:23:44
-**Status**: Requirements Gathering (intake)
+**Status**: Implemented — see final-summary.md. One open decision: the floor tile size.
 
 ## Requirements / goal
 
@@ -10,10 +10,10 @@ Lay out the Workshop as a 760-stud ring, using the models generated in job 019. 
 
 ## Checklist
 
-- [ ] Requirements reviewed (this intake)
-- [ ] **Independent reviewer agent run** - given the symptom/requirement, NOT my theory (GROUND-RULES 8)
-- [ ] **Symptom reproduced in PLAY**, at the player's camera, before any fix (GROUND-RULES 7)
-- [ ] Implementation plan created & agreed
-- [ ] Implementation completed
-- [ ] **Proof it works better** captured - before/after from the same camera, in Play
-- [ ] Final summary + changelog written
+- [x] Requirements reviewed (this intake)
+- [x] **Independent reviewer agent run** - given the requirement only, not my reading. Found the Box collision fidelity and the dead station contract; both real, both missed by me
+- [x] **Walked in PLAY at eye level** before trusting any radius - which moved the spawn and re-oriented the gantry
+- [x] Implementation plan created; three owner decisions taken via the wizard
+- [x] Implementation completed (floor tile size left open for the owner - test patch standing in the plaza)
+- [x] **Proof captured in Play**: stations 20/20 prompts attached (was 0), spawn facing the Arena dot=1.00, eye-level captures of the arrival view and the base ring
+- [x] Final summary + changelog written

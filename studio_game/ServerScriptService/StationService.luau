@@ -7,12 +7,15 @@
 
 	🔴 FOUND BY ATTRIBUTE, NEVER BY POSITION.
 
-	The hub is REGENERATED from `HubSpec` on every server start, so a station's world
-	position is an output, not a fact — it moved twice during job 012 alone (the Scrap Arena to
-	clear the sightline, then every sign when the plinths became machines). `WorkshopBuilder`
-	stamps `StationId` on each station's folder for exactly this reason. Anything here that hunted
-	for a station by coordinate would break the next time the spec changed, silently, and look like
-	a prompt bug.
+	The Workshop is PLACED BY HAND in the editor (job 020, decision 0019) and every position in it
+	is provisional — the whole room is expected to be nudged, and the radii in particular were
+	built to be walked and then changed. So a station is found by its `StationId` attribute, which
+	survives being moved, and never by coordinate or by name. Anything here that hunted for a
+	station by position would break the first time someone dragged it three studs, silently, and
+	look like a prompt bug.
+
+	The room has TWO kinds of station — shared buildings in `Hub.Common.Fixtures` and one smelter
+	per player in `Hub.Bases.<n>.Fixtures`. See `collectStations`.
 
 	⚠️ **`screen_capture` cannot render `ProximityPrompt` bubbles** (PITFALLS #20). A screenshot
 	showing no prompt is not evidence there is no prompt. Verify by reading
@@ -25,7 +28,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = ReplicatedStorage:WaitForChild("Config", 20)
 local Economy = require(Config:WaitForChild("Economy", 20))
-local HubSpec = require(ReplicatedStorage:WaitForChild("Hub", 20):WaitForChild("HubSpec", 20))
 local Log = require(ReplicatedStorage:WaitForChild("Log", 20)).scope("Stations")
 
 local MagnetState = require(script.Parent:WaitForChild("MagnetState", 20))
@@ -106,6 +108,25 @@ StationService.BEHAVIOUR = {
 		screen = nil,
 		notYet = "THE ARENA IS BUILT IN GROUP 10",
 	},
+	--- ⚠️ Added in job 020 because the kiosk is now STANDING in the common ring while its economy
+	--- is still P2 in `docs/build/05-workshop.md`. Without an entry here `attachPrompts` logs
+	--- `station "Shop" has no behaviour defined` and the building is silent scenery — which is the
+	--- placeholder-shaped hole non-negotiable #10 exists to prevent. It announces the gap instead.
+	Shop = {
+		actionText = "BROWSE",
+		objectText = "SHOP KIOSK",
+		screen = nil,
+		notYet = "THE SHOP OPENS LATER — NOTHING TO SELL YET",
+	},
+	--- 🔴 The player's OWN smelter, one per base. Unlike every other id this one is per-player, so
+	--- the prompt carries a `BaseIndex` and ownership is checked server-side before anything is
+	--- granted. Dormant until the base is claimed, which nothing does yet.
+	Smelter = {
+		actionText = "INSPECT",
+		objectText = "SMELTER",
+		screen = nil,
+		notYet = "BASE CLAIMING IS NOT BUILT YET",
+	},
 } :: { [string]: Behaviour }
 
 --------------------------------------------------------------------------------
@@ -133,35 +154,100 @@ local function promptHost(station: Instance): BasePart?
 	return nil
 end
 
+--- Every fixture in the Workshop that carries a `StationId`, from BOTH halves of the room.
+---
+--- 🔴 THE ROOM HAS TWO KINDS OF STATION, and this is the whole reason this helper exists.
+--- Job 019's per-base design was rejected: the owner's ground rule is that upgrade buildings are
+--- COMMON and a player owns only their smelter. So job 020 built:
+---
+---   `Hub.Common.Fixtures.*`          — the seven shared buildings, no `BaseIndex`
+---   `Hub.Bases.<1..12>.Fixtures.*`   — each player's own smelter, stamped with `BaseIndex`
+---
+--- Walking only `Bases` (as this did) finds the twelve smelters and NONE of the seven buildings,
+--- so `RequestRecycle`, the Magnet Lab upgrade and `enterZone` all answer "station is not in the
+--- world" while standing in front of the building.
+---
+--- ⚠️ Found by ATTRIBUTE, never by name or coordinate. Every position in the room is provisional
+--- and expected to be nudged in the editor; a coordinate would be stale the first time it moved.
+local function collectStations(): ({ Instance }, string?)
+	local root = workspace:FindFirstChild("Hub")
+	if not root then
+		return {}, "the hub is not built"
+	end
+	local machines: { Instance } = {}
+	local common = root:FindFirstChild("Common")
+	local commonFixtures = common and common:FindFirstChild("Fixtures")
+	if commonFixtures then
+		for _, m in ipairs(commonFixtures:GetChildren()) do
+			if m:GetAttribute("StationId") then
+				table.insert(machines, m)
+			end
+		end
+	end
+	local bases = root:FindFirstChild("Bases")
+	if bases then
+		for _, base in ipairs(bases:GetChildren()) do
+			local fixtures = base:FindFirstChild("Fixtures")
+			if fixtures then
+				for _, m in ipairs(fixtures:GetChildren()) do
+					if m:GetAttribute("StationId") then
+						table.insert(machines, m)
+					end
+				end
+			end
+		end
+	end
+	if #machines == 0 then
+		return {}, "the hub is built but holds no station -- nothing carries a StationId"
+	end
+	return machines, nil
+end
+
+--- The shared buildings that must stand in the common ring, and how many bases the room has.
+---
+--- ⚠️ Deliberately a list HERE rather than a count derived from the world: a check that counts
+--- what it finds can never fail. If a building is deleted in the editor, this is what notices.
+--- `Smelter` is absent on purpose -- it is per-base and validated separately below.
+local REQUIRED_COMMON = {
+	"MagnetLab",
+	"Recycler",
+	"Repair",
+	"RobotBay",
+	"PartArchive",
+	"ScrapArena",
+	"FactoryEntrance",
+	"Shop",
+}
+--- 🔴 TEN, not twelve — and this is a DESIGN CHANGE, not a tuning number.
+---
+--- The Workshop is a 12-gon and job 020 built one base per facet. The owner then gave **two facets
+--- either side of the Factory Entrance over to the shared shops**, so the upgrade stations cluster
+--- at the exit instead of ringing the room. That leaves ten player bases.
+---
+--- ⚠️ `docs/systems/places` and the decision index both say `MaxPlayers = 12`. Ten bases cannot
+--- house twelve players. Either the cap drops to 10, or two bases go somewhere other than a facet.
+--- Tracked in findings/0010 — do not "fix" this by quietly putting it back to 12.
+local EXPECTED_BASES = 10
+
+--- How many stations actually stand in the world right now.
+---
+--- ⚠️ Exists so the prompt count can be reported against a REAL denominator. Bootstrap used to
+--- derive it from `HubSpec.FIXTURES * HubSpec.BASES` — a spec for a room that job 019 deleted, and
+--- which now describes nothing that exists. "7/0 prompts attached" is not a health check.
+function StationService.stationCount(): number
+	local machines = collectStations()
+	return #machines
+end
+
 --- Attach a prompt to every station the Workshop built. Returns (attached, problems).
 ---
 --- Idempotent, like everything else that touches the regenerated room: an existing prompt is
 --- replaced, so calling this after a `workshop.rebuild` is correct rather than additive.
 function StationService.attachPrompts(): (number, { string })
 	local problems = {}
-	local root = workspace:FindFirstChild("Hub")
-	local bases = root and root:FindFirstChild("Bases")
-	if not bases then
-		return 0, { "no Workspace.Hub.Bases -- the hub has not been built" }
-	end
-
-	--- 🔴 STATIONS ARE NOW PER-BASE. There were seven shared stations in one hall; there are now
-	--- three fixtures inside each of twelve bases. So this walks every base and stamps the owning
-	--- base's index onto each prompt alongside the station id.
-	---
-	--- ⚠️ Found by ATTRIBUTE, never by name or coordinate. `HubBuilder` stamps `StationId` and
-	--- `BaseIndex` on each fixture; the hub is regenerated every start and every position in it can
-	--- move, so a coordinate would be stale the first time a base got wider.
-	local machines: { Instance } = {}
-	for _, base in ipairs(bases:GetChildren()) do
-		local fixtures = base:FindFirstChild("Fixtures")
-		if fixtures then
-			for _, m in ipairs(fixtures:GetChildren()) do
-				if m:GetAttribute("StationId") then
-					table.insert(machines, m)
-				end
-			end
-		end
+	local machines, err = collectStations()
+	if err then
+		return 0, { err }
 	end
 
 	local n = 0
@@ -236,26 +322,32 @@ function StationService.attachPrompts(): (number, { string })
 		n += 1
 	end
 
-	--- ⚠️ Every fixture in the SPEC must have got a prompt, IN EVERY BASE. Counting the prompts we
-	--- made would report success for a hub that built two bases; comparing against the spec times
-	--- the base count is what makes this able to fail.
-	for _, f in ipairs(HubSpec.FIXTURES) do
-		if not seen[f.id] then
-			table.insert(problems, ("fixture %q is in HubSpec but was not found in any base"):format(f.id))
+	--- ⚠️ VALIDATED AGAINST THE ROOM THAT EXISTS, not against `HubSpec`.
+	---
+	--- 🔴 This used to compare every base against `#HubSpec.FIXTURES` (3) and `HubSpec.BASES`, i.e.
+	--- against job 019's rejected design where each base held its own Magnet Lab, Recycler and
+	--- Robot Bay. Job 020's owner ground rule is the opposite: the upgrade buildings are COMMON and
+	--- a player owns only their smelter. So the old check reported twelve errors -- "base 1 got 1
+	--- prompts, not 3" -- against a room that was completely correct, which is worse than no check:
+	--- it trains everyone to scroll past station errors.
+	---
+	--- What can still genuinely fail, and does the job the old check was trying to do:
+	for _, id in ipairs(REQUIRED_COMMON) do
+		if not seen[id] then
+			table.insert(problems, ("common station %q is missing from Hub.Common.Fixtures"):format(id))
 		end
 	end
-	local wantPerBase = #HubSpec.FIXTURES
 	for index, got in pairs(perBase) do
-		if got ~= wantPerBase then
-			table.insert(problems, ("base %d got %d prompts, not %d"):format(index, got, wantPerBase))
+		if got ~= 1 then
+			table.insert(problems, ("base %d has %d fixtures, expected exactly 1 (its own smelter)"):format(index, got))
 		end
 	end
 	local basesSeen = 0
 	for _ in pairs(perBase) do
 		basesSeen += 1
 	end
-	if basesSeen ~= HubSpec.BASES then
-		table.insert(problems, ("%d bases have prompts, but HubSpec says %d"):format(basesSeen, HubSpec.BASES))
+	if basesSeen ~= EXPECTED_BASES then
+		table.insert(problems, ("%d bases carry a smelter, expected %d"):format(basesSeen, EXPECTED_BASES))
 	end
 
 	return n, problems
@@ -323,24 +415,15 @@ function StationService.playerIsAt(player: Player, stationId: string): (boolean,
 	if not root then
 		return false, "no character"
 	end
-	--- 🔴 Walks the BASES, not a single Stations folder. Job 019 made stations per-base, and this
-	--- proximity check is the one thing standing between a modified client and every economy remote
-	--- in the game — so it had to move with them rather than keep looking at a folder that no longer
-	--- exists. It would have returned "the Workshop is not built" for every call, refusing honest
-	--- players at their own Recycler.
-	local hub = workspace:FindFirstChild("Hub")
-	local bases = hub and hub:FindFirstChild("Bases")
-	if not bases then
-		return false, "the hub is not built"
-	end
-	local candidates: { Instance } = {}
-	for _, base in ipairs(bases:GetChildren()) do
-		local fixtures = base:FindFirstChild("Fixtures")
-		if fixtures then
-			for _, m in ipairs(fixtures:GetChildren()) do
-				table.insert(candidates, m)
-			end
-		end
+	--- 🔴 Walks BOTH the common ring and the twelve bases -- see `collectStations`. This proximity
+	--- check is the one thing standing between a modified client and every economy remote in the
+	--- game, so it has to see every station that exists. Job 019 moved stations per-base; job 020
+	--- moved the seven shared ones back out to `Hub.Common`, and for a while this looked only at
+	--- `Bases` -- which finds the smelters and none of the buildings, refusing honest players
+	--- standing directly in front of the Recycler.
+	local candidates, err = collectStations()
+	if err then
+		return false, err
 	end
 	for _, station in ipairs(candidates) do
 		if station:GetAttribute("StationId") == stationId then

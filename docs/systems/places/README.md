@@ -95,27 +95,46 @@ Both directions verified.
 | Maximum Visitor Count | ✅ **12** on Creator Hub | See the stale-session warning below |
 | `Lighting.LightingStyle` | ✅ **Realistic** | Carries the role `Future` used to; what the glossy look needs |
 | `Lighting.PrioritizeLightingQuality` | ✅ true | Keep |
-| Social Slots | 🔴 **Roblox optimized** — DECIDED AGAINST, not yet applied | Must become a fixed 12 — see below |
+| Social Slots | 🔴 **Roblox optimized** — DECIDED AGAINST, not yet applied | Must become a fixed **10** — see below |
 | Access level | 🔴 **Private during development** — decided 2026-08-30 | Not yet applied |
+
+### 🔴 The cap is TEN, changed from twelve on 2026-09-06
+
+**The owner decided: "No just 10 Players. Decided."**
+
+Twelve was never an independent judgement — it came from the Workshop's shape. The room is a 12-gon
+and job 020 built one player base per facet, so the cap matched the facet count. In job 020 the owner
+then rearranged the room by hand and **gave the two facets either side of the Factory Entrance over to
+the shared shops**, which reads far better and puts every upgrade station at the exit. That leaves
+**ten bases**, so the cap follows the room down to ten.
+
+⚠️ **The room is the constraint, not the other way round.** If anyone later wants twelve players back,
+the question is not "raise the cap" — it is "where do two more bases go", and the answer cannot be the
+shop frontage without undoing a layout the owner judged better by playing it. See
+[finding 0010](../../../findings/0010-ten-player-bases-against-a-decided-twelv.md).
+
+`StationService.EXPECTED_BASES` is **10** to match, and Play reports `stations: 18/18 prompts attached`
+(8 shared + 10 smelters) with zero station errors.
 
 ### ⚠️ The Studio session can be stale, and publishing from it can overwrite the web
 
-The Creator Hub says **12**. The open Studio Edit session still reports `Players.MaxPlayers = 60`, and
+The Creator Hub says **12** and now needs changing to **10**. The open Studio Edit session still reports `Players.MaxPlayers = 60`, and
 `Players.PreferredPlayers = 60` alongside it — re-probed 2026-08-30 and unchanged.
 
 That is a **cached session**, not a failed save — the Creator Hub value is what live servers use. But it
 is a genuine hazard: **publishing from a Studio session holding the old value can push `60` back over
-the `12`.** Reopen the place in Studio before publishing, and confirm it reads 12.
+the cap.** Reopen the place in Studio before publishing, and confirm it reads **10**.
 
 `Players.MaxPlayers` is **read-only from scripts** (`"Unable to assign property MaxPlayers"`), so this
 cannot be corrected or asserted from code — only observed.
 
 ### Social Slots — decided, and still to be applied by a human
 
-**Decision (2026-08-30): a fixed 12 slots, and the place stays private while it is being built.**
+**Decision (2026-08-30, revised 2026-09-06): a fixed 10 slots, and the place stays private while it
+is being built.** The count changed from 12 to 10 when two facets became shop frontage — see above.
 
 `Roblox optimized` lets Roblox add slots above the cap so friends can join a full server, which means
-**the effective server size can exceed 12** — the number every budget in
+**the effective server size can exceed 10** — the number every budget in
 [performance](../performance/README.md) is calculated against. Measuring the Arena robot count or the
 pull cap against a server that can quietly hold more than 12 would produce numbers that mean nothing.
 
@@ -175,6 +194,6 @@ rather than creating.
 |---|---|
 | **Social Slots** — `Roblox optimized` can push the server past 12, which is the number every performance budget assumes | before the place is joinable, and after the Arena count is measured |
 | Access level — decide deliberately | before the place is joinable |
-| Reopen Studio so its session picks up `MaxPlayers = 12`, and never publish from a session showing 60 | before the next publish |
+| 🔴 Set `MaxPlayers` to **10** on the Creator Hub (it was 12), then reopen Studio so its session picks it up — never publish from a session showing 60 | before the next publish |
 | Streaming radii — what target radius suits a twelve-zone corridor? Human-set, and needs measuring | before zone 3 |
-| Does 12 players still hold once the Arena robot count is **measured**? | when the Arena is measured |
+| Does 10 players still hold once the Arena robot count is **measured**? | when the Arena is measured |
