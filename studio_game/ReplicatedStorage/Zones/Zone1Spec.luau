@@ -5,6 +5,22 @@
 	The first real zone of the factory. `docs/content/zones` gives its theme verbatim from the spec:
 	*"Cyan / pink / yellow. Small conveyors. Paint machines. Bright toy-like machinery."*
 
+	🔴🔴 FENCED 2026-09-06 — DO NOT BUILD THIS. Decision 0023 makes every place hand-placed;
+	floor 1 is built in the editor against the real doorway. This file is now REFERENCE DATA
+	(tile counts, spawn-volume shapes, the accent palette) and nothing else.
+
+	⚠️ It is still live and still dangerous. It passes `validate()`, and the `zone.rebuild` dev
+	command will materialise a ~430-part room at ORIGIN and REGISTER it with ZoneManager — after
+	which `zoneContaining` returns COLOR_WORKSHOP for a region no player is in, and the real
+	floor 1 cannot register under the same id. Its ORIGIN (0, 0, -200) also predates the Workshop
+	moving to x ~= 1556 in job 020, so the phantom lands ~1,800 studs from the actual door.
+
+	⚠️ `BUILD_GENERATED_WORLD` is false and stays false (decision 0023). The rationale below is
+	kept because it is still TRUE about `Workspace` not syncing -- that problem is now solved by
+	exporting a placed room (`ServerScriptService/RoomExport.luau`), not by generating one.
+
+	--- original rationale, superseded ---
+
 	🔴 WHY THIS IS DATA AND NOT A ROOM BUILT BY HAND.
 
 	`Workspace` does not sync (job 002, probed). Geometry placed by hand lives only inside the

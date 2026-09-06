@@ -192,15 +192,60 @@ catalog that could have needed hundreds of bespoke animations needs **10 combat 
 locomotion and reaction set. Definitions are in
 [systems/robot-rig](../systems/robot-rig/README.md#5-animation-profiles).
 
+## Carry weight and detach power
+
+**The source of truth for `weight` and `powerRequired`.** `tools/gen-parts-catalog.py` reads this table
+and emits both fields onto the matching catalog row; `PartsCatalog.validate()` then *requires* them for
+every tier listed here, so a half-authored tier fails loudly at boot instead of silently.
+
+A tier appears here only once its build group has done the balance work. **Tier 1 = job 023.**
+
+| `PartId` | Tier | Weight | `powerRequired` | Why |
+|---|--:|---|--:|---|
+| `WORK_LAMP` | 1 | Medium | 6 | the typical roll; must be takeable on turn one |
+| `MINI_MOTOR` | 1 | Medium | 6 | |
+| `PAINT_DRUM` | 1 | Medium | 6 | a drum reads heavier than a lamp, but tier 1 is not where carrying should hurt |
+| `PIPE_WRENCH` | 1 | Medium | 8 | |
+| `SPRING_PUNCHER` | 1 | Medium | 8 | |
+| `CASTER_WHEELS` | 1 | Medium | 8 | |
+| `MAGNET_COIL` | 1 | **Heavy** | 10 | the Rare. Heavier to escape with — the prize costs you speed |
+| `GOLDEN_GEAR` | 1 | **Heavy** | 10 | the Legendary, and the hardest run home in the tier |
+
+### 🔴 Why no tier-1 part is `Small`
+
+`Magnet.START.Drive` is **16** studs/s and `Magnet.CARGO_SPEED_PENALTY` is Small 5 % / Medium 15 % /
+Heavy 25 %. So a carrier moves at:
+
+| Weight | Carry speed | Window for the guardian |
+|---|--:|---|
+| Small | **15.2** | 15.2 → 16.0 — **0.8 studs/s.** Not a chase |
+| Medium | **13.6** | 2.4 studs/s |
+| Heavy | **12.0** | 4.0 studs/s |
+
+[Decision 0024](../decisions/0024-the-guardian-kills.md) requires the guardian to be *"slower than a
+free player, faster than one carrying"*. With a `Small` part there is **no speed the guardian can have**
+that threatens a carrier without also catching someone who stole nothing. `Small` is a weight class for
+**scrap**, not for a part that can be taken off a plinth.
+
+Falling out of the table: the guardian's speed sits at **~14.5 studs/s** — it never catches a free
+player (16) and closes on a carrier at 2.4–4.0 studs/s.
+
+### 🔴 Why every tier-1 `powerRequired` is ≤ 10
+
+`Magnet.START.Power` is **10**. [Decision 0025](../decisions/0025-one-plinth-one-item.md) puts **one**
+item on **one** plinth, so a roll the player cannot detach leaves the room's only prize inert until
+they leave and come back. With the old pool-of-3 that was a minor disappointment; with one plinth it is
+a dead room. **Every tier-1 part is takeable by a player who has never upgraded.** The detach gate
+starts meaning something in tier 2, where `MAGNET_COIL`'s successor sits above the zone-2 gate of 20.
+
 ## What is still missing per part
 
-Every row above needs, before it can ship:
+Every row above still needs, before it can ship:
 
 - a model with a `RobotMount` `Attachment`
-- `Weight` class (Small / Medium / Heavy / Extreme) — drives the carry penalty
 - `CombatStats`: damage · attackSpeed · knockback · range · hp · armor
 - `VFXProfile` and `SoundProfile`
-- a Magnet Power requirement to detach it
+- ✅ ~~`Weight` class~~ and ~~a Magnet Power requirement to detach it~~ — **done for tier 1**, above
 
 **None of these are specified anywhere in the spec.** They are per-tier balance work and belong to that
 tier's build group, not to this catalog.

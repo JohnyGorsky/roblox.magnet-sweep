@@ -23,7 +23,7 @@ The 45 seconds the game is arranged around.
 - [ ] **P0** Profile write on SECURED, and ONLY on SECURED
 - [ ] **P0** Cargo HUD: name, weight, speed penalty, distance to hub, security state x5
 - [ ] **P1** Guardian proximity indicator
-- [ ] **P1** Death: respawn at last hub, scrap auto-recycles at reduced value
+- [ ] **P1** Death: respawn at the Workshop (hub 0) — 🔴 **P0 under [0024](../decisions/0024-the-guardian-kills.md)**, not P1: a guardian catch now kills, and there is no `Humanoid.Died` connection anywhere in the codebase yet, scrap auto-recycles at reduced value
 
 ---
 

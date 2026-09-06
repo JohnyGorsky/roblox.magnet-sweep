@@ -12,13 +12,26 @@ A guardian is not a health-bar enemy. It is a **denial threat**, and it follows 
 - **Only the owning guardian activates** — the one whose part you took. Every other zone's guardian
   ignores you, even as you run through its territory with stolen cargo.
 - **It pursues across zone boundaries.** It does not stop at its own edge.
-- **Caught inside its own territory → the part RESETS** to its spawn point. No recovery window.
-- **Caught outside its territory → you ragdoll and the part DROPS.** It lies there, neutral; any player
-  may take it. The guardian **gives up and returns home**.
-- The player loses **no** Coins, **no** magnet progression, **no** secured parts. Ever.
+- 🔴 **Caught → you DIE.** [Decision 0024](../../decisions/0024-the-guardian-kills.md) supersedes the
+  two outcomes this section used to describe (part resets inside its territory; ragdoll-and-drop
+  outside). The owner's rule is *"if boss catches you he kills you"*.
+- **The catch test** is a server-side radius, **~6 studs, ~0.5 s dwell** — not a `Touched` event.
+  Robust under lag and on mobile, and it never kills on a graze.
+- **Death costs the carried item and nothing else.** Coins, magnet progression, swept scrap and every
+  secured part are untouched — you lose what was never yours
+  ([0008](../../decisions/0008-secured-at-the-hub-not-in-hand.md): a part in hand is not owned).
+  Respawn is at the Workshop, which is also hub 0
+  ([0022](../../decisions/0022-the-workshop-is-hub-zero.md)).
+- The player still loses **no** Coins, **no** magnet progression, **no** secured parts. **Ever.** That
+  promise survives 0024 intact — it is the carried part, and only that, which is at risk.
 
-There is no combat. The player has a magnet, not a weapon. The answer to a guardian is always movement,
-route choice and Magnetic Drive.
+There is still no combat, and the player still has a magnet rather than a weapon: the answer to a
+guardian remains movement, route choice and Magnetic Drive. What changed is the price of getting it
+wrong.
+
+⚠️ **A player must never be killed without having understood it was coming.** The wake is not
+decoration: eye cyan → `#E03A2F`, beacon spinning, siren, **at the moment of the steal**. An
+unexplained kill reads as the game cheating, not as a rule.
 
 > **Why inert-until-theft.** Sweeping is ~55 % of playtime and it is the ASMR pillar. A guardian that
 > harasses a player who has stolen nothing taxes the exact activity the game most wants you doing.

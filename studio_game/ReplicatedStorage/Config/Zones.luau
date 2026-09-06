@@ -89,11 +89,25 @@ end
 --------------------------------------------------------------------------------
 
 Zones.REFRESH = {
-	SCRAP_MIN = 30, -- seconds
+	SCRAP_MIN = 30, -- seconds. Decision 0006, untouched
 	SCRAP_MAX = 60,
-	CYCLE_PERIOD = 240, -- ~4 min: rare parts re-roll
-	CYCLE_WARNING = 20, -- seconds of warning before the cycle fires
-	SHIFT_PERIOD = 720, -- ~12 min: server-wide modifier changes
+	SHIFT_PERIOD = 720, -- ~12 min: server-wide modifier changes. Decision 0006, untouched
+
+	--- 🔴 RENAMED from CYCLE_PERIOD/CYCLE_WARNING. Decision 0020 replaced 0006's harmless
+	--- ~4-minute Factory Cycle with the LOCKDOWN: alarm, doors closing as a wave from the
+	--- deepest room toward the Workshop, and anyone still inside DIES.
+	---
+	--- The old names described a re-roll that no longer exists. They had zero call sites, so
+	--- nothing depended on them -- but a config key still called `CYCLE_PERIOD` is how the
+	--- next reader concludes the game still has a gentle cycle.
+	LOCKDOWN_PERIOD = 240, -- ~4 min: the Lockdown fires
+	LOCKDOWN_WARNING = 20, -- seconds of warning before it does
+
+	--- ⚠️ 20 SECONDS IS NOT DEPTH-INDEPENDENT, and this single constant assumes it is.
+	--- The closure travels from the deepest room toward the Workshop, so a player in zone 12
+	--- has eleven rooms to cross. At START.Drive 16 studs/s, 20 s covers ~320 studs -- and less
+	--- while carrying. This needs to become a function of depth before the Lockdown ships
+	--- (job 024), or deep zones are an execution, not a chase.
 }
 
 --- The warning must be audible and visible from anywhere in the zone, including while
@@ -106,24 +120,38 @@ Zones.SHIFTS = { "HEAVY", "ELECTRIC", "GOLD", "SECURITY", "CHAOS" }
 -- only some of them, re-weighted by the active Shift.
 --------------------------------------------------------------------------------
 
---- How many parts a refresh spawns. [UNTUNED]
---- Deliberately expressed as a COUNT plus a bonus roll, not as fixed rarities: decision
---- 0015 bands rarity PER TIER, and tiers 10-12 contain no Common parts at all. Asking for
---- "2 Commons" would be unsatisfiable in the Quantum Reactor.
-Zones.SPAWN_PER_CYCLE = {
-	COUNT = 3, -- parts spawned per Factory Cycle
-	BONUS_ROLL_CHANCE = 0.35, -- chance of one extra, rolled one band higher
+--- 🔴 ONE PLINTH, ONE ITEM -- decision 0025.
+---
+--- `SPAWN_PER_CYCLE = { COUNT = 3, BONUS_ROLL_CHANCE = 0.35 }` used to live here, implementing
+--- 0006's "each zone owns a pool of 8; a refresh spawns only some of them". It is gone. The room
+--- holds exactly one part, on a placed plinth, and a guardian guards it -- a guardian cannot
+--- meaningfully guard three parts scattered across a room, and "first grab wins" needs a single
+--- thing to grab.
+Zones.PLINTH = {
+	RESPAWN_MIN = 30, -- seconds after a successful steal before a new part appears
+	RESPAWN_MAX = 60, -- matches the scrap refresh cadence, which 0020 left standing
+	CHANNEL_SECONDS = 5, -- the grab is a channel, not a pickup
 }
 
---- Relative weights WITHIN a tier's own band (decision 0015). A rarity absent from a
---- tier's band is simply never rolled there -- the weight table does not need to know
---- which tier it is being used for, but the CALLER must pass only that tier's available
---- rarities.
-Zones.RARITY_WEIGHT = {
-	Common = 100,
-	Uncommon = 55,
-	Rare = 22,
-	Epic = 7,
+--- 🔴 THE roll table. Singular, and deliberately so.
+---
+--- ⚠️ This replaces `Zones.RARITY_WEIGHT` (Common 100 / Uncommon 55 / Rare 22 / Epic 7 /
+--- Legendary 2 / Mythic 0.4), which shipped with **zero call sites** and which job 023's intake
+--- did not know existed -- it wrote "the roll table still needs writing down" while one was
+--- already here. Normalised over tier 1's bands the old numbers gave ~61/34/4.5/0.4: about HALF
+--- the intended Rare rate and A FIFTH of the Legendary. Two rarity tables in two files is
+--- PITFALLS #38 and #52 by construction, and the one nobody remembers is the one that wins.
+---
+--- Weights are per GRADE and renormalise over whatever bands a tier actually contains
+--- (decision 0015 bands rarity per tier; tiers 10-12 have no Commons at all). For tier 1 --
+--- 3 Common, 3 Uncommon, 1 Rare, 1 Legendary -- they sum to exactly 100 and give decision
+--- 0025's table precisely: 60 / 30 / 8 / 2, i.e. 20 % per Common, 10 % per Uncommon,
+--- 8 % MAGNET_COIL, 2 % GOLDEN_GEAR.
+Zones.PLINTH_RARITY = {
+	Common = 60,
+	Uncommon = 30,
+	Rare = 8,
+	Epic = 3,
 	Legendary = 2,
 	Mythic = 0.4,
 }

@@ -1,5 +1,11 @@
 # 0019 — Hero geometry is editor-placed, then exported
 
+> ⚠️ **PARTLY SUPERSEDED** by
+> [0023 — the room is placed; the contents are spawned](0023-the-room-is-placed-the-contents-are-spawned.md).
+> Its split-by-kind ("zones stay generated") is gone: **every place is placed**, and the line is
+> what stands still vs what comes back. Its demand for an **exporter** stands, and is finally met
+> by `ServerScriptService/RoomExport.luau`.
+
 **Status:** Accepted · 2026-09-06 · Job 020
 
 ## Context

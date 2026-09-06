@@ -89,7 +89,7 @@ Remotes.SPECS = {
 		kind = "Function",
 		dir = "ClientToServer",
 		rate = "Economy",
-		note = "Move the player into a built zone. Invoke with a STATION ID string -- never a tier. 🔴 Two checks, both server-side, because a ProximityPrompt fires on the CLIENT so 'the player pressed E at the entrance' is a claim: (1) the player really is within range of that station, (2) the destination is read from the server's own BEHAVIOUR table and gated on Magnet Power vs Config/Zones. An earlier version took the tier off the wire and only did (1); it passed its test because tier 2 did not exist yet. Replies (ok: boolean, { reason: string }).",
+		note = "OPEN the zone door for the player. 🔴 Under decision 0021 nothing teleports: the player WALKS through. This used to relocate the character via ZoneManager.sendTo, which also carried the Magnet Power gate check -- the gate moved to the door with it. Invoke with a STATION ID string -- never a tier. 🔴 Two checks, both server-side, because a ProximityPrompt fires on the CLIENT so 'the player pressed E at the entrance' is a claim: (1) the player really is within range of that station, (2) the destination is read from the server's own BEHAVIOUR table and gated on Magnet Power vs Config/Zones. An earlier version took the tier off the wire and only did (1); it passed its test because tier 2 did not exist yet. Replies (ok: boolean, { reason: string }).",
 	},
 	{
 		name = "RequestRepair",

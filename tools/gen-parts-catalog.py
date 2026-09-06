@@ -40,6 +40,40 @@ for line in io.open(DOC, encoding='utf-8'):
 if len(rows) != 96:
     sys.exit('expected 96 rows, parsed %d' % len(rows))
 
+# --- Carry weight + detach power, from the doc's own balance table.
+#
+# Keyed by PartId, not by row number, so it cannot silently bind to the wrong part if the
+# 96-row table is ever reordered. A tier appears only once its build group has authored it;
+# BALANCED_TIERS is derived from what is actually here, so validate() checks exactly the
+# tiers that claim to be done and stays quiet about the ones that do not.
+VALID_WEIGHT = {'Small', 'Medium', 'Heavy', 'Extreme'}
+BAL_RE = re.compile(r'\|\s*`([A-Z0-9_]+)`\s*\|\s*(\d+)\s*\|\s*\*{0,2}(\w+)\*{0,2}\s*\|\s*(\d+)\s*\|')
+balance = {}
+for line in io.open(DOC, encoding='utf-8'):
+    m = BAL_RE.match(line)
+    if not m:
+        continue
+    pid, tier, weight, power = m.group(1), int(m.group(2)), m.group(3), int(m.group(4))
+    if weight not in VALID_WEIGHT:
+        sys.exit('%s has bad weight class %r' % (pid, weight))
+    if pid in balance:
+        sys.exit('%s appears twice in the carry-weight table' % pid)
+    balance[pid] = {'tier': tier, 'weight': weight, 'power': power}
+
+known = {r['id'] for r in rows}
+for pid in balance:
+    if pid not in known:
+        sys.exit('carry-weight table names %r, which is not in the catalog' % pid)
+
+balanced_tiers = sorted({b['tier'] for b in balance.values()})
+
+# A listed tier must be listed COMPLETELY, or validate() would bless a half-done tier.
+for t in balanced_tiers:
+    want = {r['id'] for r in rows if r['tier'] == t}
+    have = {p for p, b in balance.items() if b['tier'] == t}
+    if want != have:
+        sys.exit('tier %d is partly authored -- missing: %s' % (t, ', '.join(sorted(want - have))))
+
 VALID_SLOT = {'Head', 'Core', 'Body', 'Arm', 'Mobility', 'Back'}
 VALID_RAR = {'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'}
 for r in rows:
@@ -81,7 +115,28 @@ L.append('local Parts = require(ReplicatedStorage.Config.Parts)')
 L.append('')
 L.append('local PartsCatalog = {}')
 L.append('')
-L.append('PartsCatalog.ALL = {')
+L.append('--- 🔴 An EXPLICIT row type, because Luau infers a table literal\'s type from its FIRST')
+L.append('--- element. Job 023 added `weight` and `powerRequired` to tier 1 only, and the analyzer')
+L.append('--- promptly reported all 88 unauthored rows as incompatible with row 1. The fields are')
+L.append('--- optional HERE and required by `validate()` for tiers in BALANCED_TIERS -- permissive')
+L.append('--- type, strict runtime check, so an unauthored tier is not a type error but a')
+L.append('--- half-authored one is still caught.')
+L.append('export type CatalogRow = {')
+L.append('\tpartId: string,')
+L.append('\tname: string,')
+L.append('\ttier: number,')
+L.append('\tslot: string,')
+L.append('\trarity: string,')
+L.append('\tzone: string,')
+L.append('\teffect: string,')
+L.append('\tspecRarity: string?,')
+L.append('\tanimationProfile: string?,')
+L.append('\tmobilityProfile: string?,')
+L.append('\tweight: string?,')
+L.append('\tpowerRequired: number?,')
+L.append('}')
+L.append('')
+L.append('local ALL: { CatalogRow } = {')
 
 for r in rows:
     bits = [
@@ -100,6 +155,10 @@ for r in rows:
     mo = dash(r['mob'])
     if mo:
         bits.append('mobilityProfile = %s' % lua_str(mo))
+    b = balance.get(r['id'])
+    if b:
+        bits.append('weight = %s' % lua_str(b['weight']))
+        bits.append('powerRequired = %d' % b['power'])
     bits.append('zone = %s' % lua_str(r['zone']))
     bits.append('effect = %s' % lua_str(r['effect']))
 
@@ -107,6 +166,8 @@ for r in rows:
     L.append('\t{ %s },' % ', '.join(bits))
 
 L.append('}')
+L.append('')
+L.append('PartsCatalog.ALL = ALL')
 L.append('')
 L.append('--- Lookups, built once. 🔴 A duplicate partId is an error, not a last-one-wins:')
 L.append('--- two rows sharing an id means every consumer silently disagrees about that part.')
@@ -140,6 +201,10 @@ L.append('\tend')
 L.append('\treturn out')
 L.append('end')
 L.append('')
+L.append('--- Tiers whose carry weight and detach power have been authored. Derived from the')
+L.append('--- balance table in that doc, so it can never claim a tier the data does not cover.')
+L.append('PartsCatalog.BALANCED_TIERS = { %s }' % ', '.join('[%d] = true' % t for t in balanced_tiers))
+L.append('')
 L.append('--- ⚠️ Validates against Config/Parts rather than trusting the generator. If the doc grows a')
 L.append('--- slot or grade the schema does not know, this says so at startup instead of at runtime.')
 L.append('function PartsCatalog.validate(): { string }')
@@ -159,6 +224,19 @@ L.append('\t\tend')
 L.append('\t\tif not grades[p.rarity] then')
 L.append('\t\t\ttable.insert(problems, ("%s has unknown rarity %q"):format(p.partId, p.rarity))')
 L.append('\t\tend')
+L.append('\t\t--- 🔴 Carry weight and detach power, but ONLY for tiers that claim to be authored.')
+L.append('\t\t--- Job 023 found both fields declared in Config/Parts and set on NO row at all, with')
+L.append('\t\t--- validate() checking neither -- so the gap was silent at boot. Without `weight`')
+L.append('\t\t--- there is no slowed carrier for a guardian to outrun (decision 0024); without')
+L.append('\t\t--- `powerRequired` the detach gate has no threshold to compare against.')
+L.append('\t\tif PartsCatalog.BALANCED_TIERS[p.tier] then')
+L.append('\t\t\tif not p.weight then')
+L.append('\t\t\t\ttable.insert(problems, ("%s is in an authored tier but has no weight"):format(p.partId))')
+L.append('\t\t\tend')
+L.append('\t\t\tif type(p.powerRequired) ~= "number" then')
+L.append('\t\t\t\ttable.insert(problems, ("%s is in an authored tier but has no powerRequired"):format(p.partId))')
+L.append('\t\t\tend')
+L.append('\t\tend')
 L.append('\tend')
 L.append('\treturn problems')
 L.append('end')
@@ -177,3 +255,5 @@ print('  tiers 1-%d, %d parts each' % (max(r['tier'] for r in rows),
                                        len(rows) // max(r['tier'] for r in rows)))
 regraded = [r for r in rows if dash(r['specRarity'])]
 print('  re-graded by decision 0015: %d' % len(regraded))
+print('  weight + powerRequired authored for tier(s): %s (%d parts)'
+      % (', '.join(str(t) for t in balanced_tiers) or 'none', len(balance)))

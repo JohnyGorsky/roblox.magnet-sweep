@@ -20,23 +20,44 @@ local Parts = require(ReplicatedStorage.Config.Parts)
 
 local PartsCatalog = {}
 
-PartsCatalog.ALL = {
+--- 🔴 An EXPLICIT row type, because Luau infers a table literal's type from its FIRST
+--- element. Job 023 added `weight` and `powerRequired` to tier 1 only, and the analyzer
+--- promptly reported all 88 unauthored rows as incompatible with row 1. The fields are
+--- optional HERE and required by `validate()` for tiers in BALANCED_TIERS -- permissive
+--- type, strict runtime check, so an unauthored tier is not a type error but a
+--- half-authored one is still caught.
+export type CatalogRow = {
+	partId: string,
+	name: string,
+	tier: number,
+	slot: string,
+	rarity: string,
+	zone: string,
+	effect: string,
+	specRarity: string?,
+	animationProfile: string?,
+	mobilityProfile: string?,
+	weight: string?,
+	powerRequired: number?,
+}
+
+local ALL: { CatalogRow } = {
 	--- 1. Work Lamp
-	{ partId = "WORK_LAMP", name = "Work Lamp", tier = 1, slot = "Head", rarity = "Common", zone = "Color Workshop", effect = "improved targeting" },
+	{ partId = "WORK_LAMP", name = "Work Lamp", tier = 1, slot = "Head", rarity = "Common", weight = "Medium", powerRequired = 6, zone = "Color Workshop", effect = "improved targeting" },
 	--- 2. Mini Motor
-	{ partId = "MINI_MOTOR", name = "Mini Motor", tier = 1, slot = "Core", rarity = "Common", zone = "Color Workshop", effect = "attack-speed bonus" },
+	{ partId = "MINI_MOTOR", name = "Mini Motor", tier = 1, slot = "Core", rarity = "Common", weight = "Medium", powerRequired = 6, zone = "Color Workshop", effect = "attack-speed bonus" },
 	--- 3. Paint Drum
-	{ partId = "PAINT_DRUM", name = "Paint Drum", tier = 1, slot = "Body", rarity = "Common", zone = "Color Workshop", effect = "basic HP" },
+	{ partId = "PAINT_DRUM", name = "Paint Drum", tier = 1, slot = "Body", rarity = "Common", weight = "Medium", powerRequired = 6, zone = "Color Workshop", effect = "basic HP" },
 	--- 4. Pipe Wrench
-	{ partId = "PIPE_WRENCH", name = "Pipe Wrench", tier = 1, slot = "Arm", rarity = "Uncommon", specRarity = "Common", animationProfile = "SweepLight", zone = "Color Workshop", effect = "balanced melee" },
+	{ partId = "PIPE_WRENCH", name = "Pipe Wrench", tier = 1, slot = "Arm", rarity = "Uncommon", specRarity = "Common", animationProfile = "SweepLight", weight = "Medium", powerRequired = 8, zone = "Color Workshop", effect = "balanced melee" },
 	--- 5. Spring Puncher
-	{ partId = "SPRING_PUNCHER", name = "Spring Puncher", tier = 1, slot = "Arm", rarity = "Uncommon", animationProfile = "PunchFast", zone = "Color Workshop", effect = "knockback punch" },
+	{ partId = "SPRING_PUNCHER", name = "Spring Puncher", tier = 1, slot = "Arm", rarity = "Uncommon", animationProfile = "PunchFast", weight = "Medium", powerRequired = 8, zone = "Color Workshop", effect = "knockback punch" },
 	--- 6. Caster Wheels
-	{ partId = "CASTER_WHEELS", name = "Caster Wheels", tier = 1, slot = "Mobility", rarity = "Uncommon", specRarity = "Common", mobilityProfile = "Wheels", zone = "Color Workshop", effect = "movement speed" },
+	{ partId = "CASTER_WHEELS", name = "Caster Wheels", tier = 1, slot = "Mobility", rarity = "Uncommon", specRarity = "Common", mobilityProfile = "Wheels", weight = "Medium", powerRequired = 8, zone = "Color Workshop", effect = "movement speed" },
 	--- 7. Magnet Coil
-	{ partId = "MAGNET_COIL", name = "Magnet Coil", tier = 1, slot = "Back", rarity = "Rare", zone = "Color Workshop", effect = "stronger Arena control" },
+	{ partId = "MAGNET_COIL", name = "Magnet Coil", tier = 1, slot = "Back", rarity = "Rare", weight = "Heavy", powerRequired = 10, zone = "Color Workshop", effect = "stronger Arena control" },
 	--- 8. Golden Gear
-	{ partId = "GOLDEN_GEAR", name = "Golden Gear", tier = 1, slot = "Head", rarity = "Legendary", zone = "Color Workshop", effect = "faster ability charging" },
+	{ partId = "GOLDEN_GEAR", name = "Golden Gear", tier = 1, slot = "Head", rarity = "Legendary", weight = "Heavy", powerRequired = 10, zone = "Color Workshop", effect = "faster ability charging" },
 	--- 9. Toy Camera
 	{ partId = "TOY_CAMERA", name = "Toy Camera", tier = 2, slot = "Head", rarity = "Common", zone = "Toy Assembly", effect = "improved ranged targeting" },
 	--- 10. Wind-Up Key
@@ -215,6 +236,8 @@ PartsCatalog.ALL = {
 	{ partId = "VOID_MAGNET", name = "Void Magnet", tier = 12, slot = "Arm", rarity = "Mythic", animationProfile = "GrabPull", zone = "Quantum Reactor", effect = "pulls multiple robots toward itself" },
 }
 
+PartsCatalog.ALL = ALL
+
 --- Lookups, built once. 🔴 A duplicate partId is an error, not a last-one-wins:
 --- two rows sharing an id means every consumer silently disagrees about that part.
 local byId = {}
@@ -247,6 +270,10 @@ function PartsCatalog.byRarity(rarity: string)
 	return out
 end
 
+--- Tiers whose carry weight and detach power have been authored. Derived from the
+--- balance table in that doc, so it can never claim a tier the data does not cover.
+PartsCatalog.BALANCED_TIERS = { [1] = true }
+
 --- ⚠️ Validates against Config/Parts rather than trusting the generator. If the doc grows a
 --- slot or grade the schema does not know, this says so at startup instead of at runtime.
 function PartsCatalog.validate(): { string }
@@ -265,6 +292,19 @@ function PartsCatalog.validate(): { string }
 		end
 		if not grades[p.rarity] then
 			table.insert(problems, ("%s has unknown rarity %q"):format(p.partId, p.rarity))
+		end
+		--- 🔴 Carry weight and detach power, but ONLY for tiers that claim to be authored.
+		--- Job 023 found both fields declared in Config/Parts and set on NO row at all, with
+		--- validate() checking neither -- so the gap was silent at boot. Without `weight`
+		--- there is no slowed carrier for a guardian to outrun (decision 0024); without
+		--- `powerRequired` the detach gate has no threshold to compare against.
+		if PartsCatalog.BALANCED_TIERS[p.tier] then
+			if not p.weight then
+				table.insert(problems, ("%s is in an authored tier but has no weight"):format(p.partId))
+			end
+			if type(p.powerRequired) ~= "number" then
+				table.insert(problems, ("%s is in an authored tier but has no powerRequired"):format(p.partId))
+			end
 		end
 	end
 	return problems

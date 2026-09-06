@@ -1,5 +1,9 @@
 # 0008 — A part is secured at the hub, never in your hands
 
+> ⚠️ **AMENDED** by [0022 — the Workshop is hub 0](0022-the-workshop-is-hub-zero.md): the Workshop
+> counts as a Service Hub, so crossing floor 1's entry doors is a `SECURED` moment. Every other
+> row of this record stands.
+
 **Status:** Accepted · 2026-08-29 · Job 001
 
 ## Context

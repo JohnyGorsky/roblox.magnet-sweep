@@ -62,9 +62,17 @@ scrap) · **SECURITY** (more dangerous, better parts) · **CHAOS** (more world e
 
 ## Rare part spawn rules (section 20)
 
-Each zone owns a pool of **8 possible parts**. A refresh spawns only some — typically 2 normal, 1
-uncommon, and a chance at 1 rare, re-weighted by the active Shift. An extremely valuable spawn fires a
-server-wide **⚡ LEGENDARY PART DETECTED**.
+🔴 **Superseded by [decision 0025](../../decisions/0025-one-plinth-one-item.md).**
+
+~~Each zone owns a pool of **8 possible parts**. A refresh spawns only some — typically 2 normal, 1
+uncommon, and a chance at 1 rare~~ — the room holds **exactly one** part, on an editor-placed plinth,
+re-rolled **30–60 s** after a successful steal. A guardian cannot meaningfully guard three parts
+scattered across a room, and *"first grab wins"* needs a single thing to grab.
+
+The pool of 8 survives as the **roll table**: the part on the plinth is drawn from that tier's 8, using
+`Zones.PLINTH_RARITY` — **60 / 30 / 8 / 2** across Common / Uncommon / Rare / Legendary for tier 1.
+Still re-weighted by the active Shift. An extremely valuable roll fires a server-wide
+**⚡ LEGENDARY PART DETECTED**.
 
 Parts exist physically. There are no loot boxes.
 

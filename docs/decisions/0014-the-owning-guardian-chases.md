@@ -1,5 +1,10 @@
 # 0014 — The owning guardian chases you, and its territory is the finish line
 
+> ⚠️ **PARTLY SUPERSEDED** by [0024 — the guardian kills you](0024-the-guardian-kills.md). Its
+> catch OUTCOMES (part resets / ragdoll and drop) and the "there is no combat" framing are
+> replaced: a catch now kills, costing the carried item only. **Inert-until-theft still holds** —
+> a player carrying nothing is never threatened by a guardian.
+
 **Status:** Accepted · 2026-08-29 · Job 001
 
 ## Context

@@ -1,5 +1,11 @@
 # 0006 — The factory refreshes; nothing is memorisable
 
+> ⚠️ **PARTLY SUPERSEDED.** Its **Factory Cycle** clause is replaced by
+> [0020 — the Lockdown](0020-the-lockdown-replaces-the-factory-cycle.md) (lethal, not a harmless
+> re-roll), and its **pool-of-8 / spawn-3-per-cycle** clause by
+> [0025 — one plinth, one item](0025-one-plinth-one-item.md). The **scrap refresh** (30-60 s) and
+> the **Factory Shift** (~12 min) stand unchanged.
+
 **Status:** Accepted · 2026-08-29 · Job 001
 
 ## Context
