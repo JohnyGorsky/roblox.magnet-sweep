@@ -169,14 +169,27 @@ function RobotAssembler.mount(rig: Instance, partId: string, preferSocket: strin
 	--- X-length part SIDEWAYS. Measured on the tier-3 robot: with no roll the Giant Spoon sat at
 	--- **+74 deg**, pointing at the ceiling.
 	---
-	--- ⚠️ AND THE SIGN MIRRORS PER SIDE, exactly as `RobotAnim`'s shoulder signs do. By sweep:
-	--- left `+90` -> -60.1 deg, right `-90` -> -38.5 deg. Using one sign for both puts one arm up.
-	--- So `mountRoll` is stored for the LEFT arm and negated on the right.
-	local roll = def.mountRoll
+	--- 🔴 `mountRot` IS A FULL THREE-AXIS ROTATION, in degrees, measured relative to the SOCKET.
+	--- It started as a single Z roll derived analytically, then the owner placed the tier-3 parts by
+	--- hand and the measurements said otherwise: the blender motor needs **92 deg about X** to stand
+	--- upright, and the two arms came out at **103 and 65 deg** -- not mirror images of each other.
+	--- One axis and a mirrored sign could not express any of that.
+	---
+	--- ⚠️ Measured against the socket, so it is INDEPENDENT of the stance: the rig these came off
+	--- carried a 62-degree shoulder roll and it cancels. That is what lets the stance live in
+	--- `RobotSpawner.STANCE` without double-counting here.
+	---
+	--- `mountRoll` (a lone Z number) is still honoured for anything that predates `mountRot`.
 	local rot = CFrame.identity
-	if roll and roll ~= 0 then
+	if typeof(def.mountRot) == "Vector3" then
+		rot = CFrame.Angles(
+			math.rad(def.mountRot.X),
+			math.rad(def.mountRot.Y),
+			math.rad(def.mountRot.Z)
+		)
+	elseif def.mountRoll and def.mountRoll ~= 0 then
 		local sign = (preferSocket == "RightArmSocket") and -1 or 1
-		rot = CFrame.Angles(0, 0, math.rad(roll * sign))
+		rot = CFrame.Angles(0, 0, math.rad(def.mountRoll * sign))
 	end
 
 	--- Solve for the part CFrame that puts its mount exactly on the socket:

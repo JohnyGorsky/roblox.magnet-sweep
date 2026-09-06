@@ -135,3 +135,63 @@ copper `#C77B3A`. ⚠️ `.gitignore` excludes `*.glb`, so they exist **on disk 
       deliberately absent right now: guessing them would be the bounding-box mistake this whole
       finding is about. Until they are bound, `RobotAssembler` reports them by name and leaves the
       socket empty.
+
+---
+
+## TIER 3 BOUND FROM THE OWNER'S OWN PLACEMENT — 2026-09-06
+
+The owner imported the eight meshes, put the parts where they belong on
+`DemoRoom.10_Robots.5_Tier3Kitchen`, and those positions were then **measured back into
+`Config/PartArt`** rather than argued about.
+
+**Four of seven needed correcting from my slot-convention guess:**
+
+| Part | mountFrac | mountRot | vs my guess |
+|---|---|---|---|
+| `REFRIGERATOR_DOOR` | (0, 0, 0) | — | already right |
+| `COLANDER` | (0, −1, 0) | — | already right |
+| `SERVING_CART_WHEELS` | (0, 1, 0) | — | already right |
+| `BLENDER_MOTOR` | (0, 0.0953, −0.006) | **92.08° X** | arrived lying down |
+| `TOASTER_COIL` | (0, 0, **−0.4405**) | — | pulled off the face from −1 |
+| `GIANT_SPOON` | (**0.3723, 1.1289**, 0) | **102.63° Z** | re-hung entirely |
+| `GOLDEN_TENDERIZER` | (**0.4898, −0.5025**, 0) | **64.50° Z** | re-hung entirely |
+
+🔴 **The two arms are NOT mirror images of each other** — 102.63° vs 64.50°, and different mount
+points. Job 022 had derived an analytic rule (one roll magnitude, sign mirrored per side) that
+measured correctly on a sweep and is still **wrong**: a human placing parts where they look right
+does not produce a mirror. Each is recorded with the socket it was measured in
+(`measuredIn`), and putting either in the opposite arm socket is explicitly unverified.
+
+🔴 **`mountRot` had to widen from one axis to three.** It began as a single Z roll, which could not
+express the blender motor's 92° about X. A single-axis rotation with a mirrored sign was an
+over-fit to the two examples that existed at the time.
+
+⚠️ `mountRot` is measured **relative to the socket**, so it is independent of the stance: the rig
+these came off still carried a 62° shoulder roll and it cancels out of the maths. That is what lets
+`RobotSpawner.STANCE` stay in code without double-counting.
+
+### Verified by round-trip, not by eye
+
+A throwaway rig was rebuilt purely from `Config/PartArt` and every part compared to the owner's, in
+torso-local space:
+
+| part | delta |
+|---|--:|
+| `REFRIGERATOR_DOOR` | 0.0000 |
+| `SERVING_CART_WHEELS` | 0.0001 |
+| `TOASTER_COIL` | 0.0005 |
+| `COLANDER` | 0.0023 |
+| `BLENDER_MOTOR` | 0.0070 |
+| `GIANT_SPOON` | 0.0116 |
+| `GOLDEN_TENDERIZER` | 0.0184 |
+
+**Worst 0.0184 studs.** ⚠️ The first run of this check reported `SERVING_CART_WHEELS` off by
+**0.1499** and I nearly filed it as a config error. It was the check: I had omitted `Waist` from the
+verification rig's stance, and the mobility chain hangs below the waist joint — 0.15 is exactly the
+waist offset. A check that does not reproduce the exact rig state measures its own difference.
+
+### Coverage now
+
+**Tier 1: 8/8 · Tier 2: 8/8 · Tier 3: 8/8** (7 measured, `FRYING_PAN` inherits the spoon's values
+because the rig has only two arm sockets and it could not be placed — still `[UNTUNED]`).
+**Tiers 4-12: 0 of 72**, ~2,160 credits, art for zones that do not exist.

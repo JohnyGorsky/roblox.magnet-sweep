@@ -40,7 +40,7 @@
 	**Tiers 1 and 2: 16 of 16.** Those are the only tiers a player can currently reach -- zone 1 is
 	the only built zone -- so this unblocks the whole early loop: find a part, install it, see it.
 
-	**Tier 3: 8 of 8** (generated 2026-09-06, `mountFrac` still [UNTUNED]).
+	**Tier 3: 8 of 8** — 7 measured off the owner's own placement, `FRYING_PAN` still [UNTUNED].
 	**Tiers 4-12: 0 of 72.** Their meshes do not exist yet. That is a Meshy programme costed at
 	~2,400 credits, not a config task, and it is art for zones that have not been built. Anything not
 	listed here fails LOUDLY in `RobotAssembler` and leaves the socket empty, per non-negotiable #10.
@@ -84,28 +84,39 @@ PartArt.BY_PART = {
 	----------------------------------------------------------------------------
 	-- Tier 3 — Mega Kitchen. Generated 2026-09-06, 240 Meshy credits.
 	--
-	-- ⚠️ [UNTUNED] — these `mountFrac` values are a FIRST PASS by slot convention, not measurements
-	-- off an approved assembly, because there was no tier-3 assembly to measure until this job built
-	-- one. They are good enough to stand a robot up (see `DemoRoom.14_Tier3Robot`) and want the
-	-- owner's eye before they are trusted the way the tier-1/2 numbers are.
+	-- 🔴 MEASURED OFF THE OWNER'S OWN PLACEMENT, not a first pass any more. They imported the eight
+	-- meshes, positioned every part on `DemoRoom.10_Robots.5_Tier3Kitchen` by eye, and these numbers
+	-- were then read back off that assembly:
+	--   mountFrac = the socket's position expressed in the PART's local frame, over its half-extent
+	--   mountRot  = the part's rotation relative to the SOCKET's frame, in degrees
 	--
-	-- 🔴 `mountRoll` IS NOT COSMETIC. These meshes normalise with their LENGTH along local X, while
-	-- the older tier-1/2 imports run theirs along local Y. A shoulder roll swings a Y-length part
-	-- DOWN and an X-length part SIDEWAYS, so an arm part needs a 90 deg roll to hang at all — and
-	-- the SIGN MIRRORS per side, exactly as the shoulder stance signs do. Measured by sweep:
-	-- left +90 gives -60.1 deg, right -90 gives -38.5 deg; the wrong sign puts the arm at +74 deg,
-	-- pointing at the ceiling. `nil`/0 means "no roll needed", which is right for every non-arm slot
-	-- and for the Y-length older meshes.
+	-- ⚠️ `mountRot` is measured against the socket, so it is INDEPENDENT of the stance. The rig this
+	-- was measured from still carried a 62-degree shoulder roll, and that cancels out of the maths --
+	-- which is why the stance can stay in code (`RobotSpawner.STANCE`) without double-counting.
+	--
+	-- Four of the seven needed correcting from my slot-convention guess: the blender motor wanted a
+	-- 92-degree X rotation to stand upright, the toaster coil came off the face to -0.44, and both
+	-- arms were re-hung entirely. Three were already right. That ratio is the argument for measuring.
 	----------------------------------------------------------------------------
 	COLANDER = { mesh = "colander", scale = 1.68, mountFrac = Vector3.new(0.00, -1.00, 0.00) },
-	BLENDER_MOTOR = { mesh = "blender_motor", scale = 1.37, mountFrac = Vector3.new(0.00, 0.00, -1.00) },
 	REFRIGERATOR_DOOR = { mesh = "refrigerator_door", scale = 3.42, mountFrac = Vector3.new(0.00, 0.00, 0.00) },
 	SERVING_CART_WHEELS = { mesh = "serving_cart_wheels", scale = 2.37, mountFrac = Vector3.new(0.00, 1.00, 0.00) },
-	TOASTER_COIL = { mesh = "toaster_coil", scale = 2.11, mountFrac = Vector3.new(0.00, 0.00, -1.00) },
-	--- the three X-length arms: they need the mirrored roll or they point at the ceiling
-	GIANT_SPOON = { mesh = "giant_spoon", scale = 2.90, mountFrac = Vector3.new(-0.85, 0.00, 0.00), mountRoll = 90 },
-	FRYING_PAN = { mesh = "frying_pan", scale = 2.90, mountFrac = Vector3.new(-0.85, 0.00, 0.00), mountRoll = 90 },
-	GOLDEN_TENDERIZER = { mesh = "golden_tenderizer", scale = 2.90, mountFrac = Vector3.new(-0.85, 0.00, 0.00), mountRoll = 90 },
+	--- 92 deg about X: it arrives lying down and has to stand up
+	BLENDER_MOTOR = { mesh = "blender_motor", scale = 1.37, mountFrac = Vector3.new(0.00, 0.10, -0.01), mountRot = Vector3.new(92, 0, 0) },
+	--- pulled off the back face to -0.44 rather than flush at -1
+	TOASTER_COIL = { mesh = "toaster_coil", scale = 2.11, mountFrac = Vector3.new(0.00, 0.00, -0.44) },
+	--- 🔴 the two arms, as the owner hung them. Note they are NOT mirror images of each other --
+	--- 103 vs 65 degrees, and different mount points. Each was placed by eye in the socket named
+	--- below, so ⚠️ putting either in the OPPOSITE arm socket is unverified and may need its own
+	--- rotation. The left/right roll mirroring that job 022 derived analytically does not survive
+	--- contact with a human placing parts where they look right.
+	GIANT_SPOON = { mesh = "giant_spoon", scale = 2.90, mountFrac = Vector3.new(0.37, 1.13, 0.00), mountRot = Vector3.new(0, 0, 103), measuredIn = "LeftArmSocket" },
+	GOLDEN_TENDERIZER = { mesh = "golden_tenderizer", scale = 2.90, mountFrac = Vector3.new(0.49, -0.50, 0.00), mountRot = Vector3.new(0, 0, 65), measuredIn = "RightArmSocket" },
+	--- ⚠️ [UNTUNED] — the frying pan is the one tier-3 part the owner did not place, because the
+	--- robot has only two arm sockets and the spoon and tenderizer took them. It inherits the
+	--- spoon's values as the closest measured X-length arm. Re-measure when it is stood on a rig.
+	FRYING_PAN = { mesh = "frying_pan", scale = 2.90, mountFrac = Vector3.new(0.37, 1.13, 0.00), mountRot = Vector3.new(0, 0, 103) },
+
 }
 
 function PartArt.get(partId: string)
