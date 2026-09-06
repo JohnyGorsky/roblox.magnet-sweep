@@ -2,7 +2,7 @@
 
 **Project**: `roblox.magnet-sweep`
 **Created**: 2026-09-06
-**Status**: Requirements Gathering (intake)
+**Status**: ✅ Completed 2026-09-06
 
 ## Requirements / goal
 
@@ -131,7 +131,8 @@ Every one of these has already cost this project time.
 - [x] Existing kit + meshes checked before any new asset is generated — plan §5
 - [x] Implementation plan created — [`implementation-plan.md`](implementation-plan.md); design agreed
       with the owner 2026-09-06, build not yet started
-- [ ] Implementation completed
-- [ ] **Proof it works better** — before/after from the same camera, in Play, at eye level
-- [ ] Exported to `WorkshopLayout.luau` (decision 0019)
-- [ ] Final summary + changelog written
+- [x] Implementation completed
+- [x] **Proof it works better** — sky-fan in Play, 45.7% -> 0.0% across the room, plus before/after captures.
+      ⚠️ See finding 0012: the fan measures occlusion, not appearance.
+- [x] Exported to `WorkshopLayout.luau` (decision 0019) — `WorkshopLayout.BACKDROP`
+- [x] Final summary + changelog written

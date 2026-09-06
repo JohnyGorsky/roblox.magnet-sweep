@@ -76,8 +76,10 @@ StationService.BEHAVIOUR = {
 	RobotBay = {
 		actionText = "BUILD",
 		objectText = "ROBOT BAY",
-		screen = nil,
-		notYet = "THE ROBOT BAY OPENS IN GROUP 09",
+		--- 🔴 Opened in job 022. `RobotBuild.local.luau` registers this name; `RobotService` owns
+		--- every decision behind it. The `notYet` is GONE rather than kept alongside a screen --
+		--- the client prefers the screen, so a stale message would sit there unread and untrue.
+		screen = "RobotBuild",
 	},
 	PartArchive = {
 		actionText = "VIEW",

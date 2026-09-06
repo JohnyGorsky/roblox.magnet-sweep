@@ -188,6 +188,24 @@ function StarterRobot.newLoadout(): { [string]: string }
 	return out
 end
 
+--- The starter set as an OWNERSHIP set (`partId -> true`), for a new profile's inventory.
+---
+--- 🔴 All five, not just the ones in `LOADOUT` -- and today those are the same five, which is
+--- exactly why this is derived from `PARTS` rather than from `LOADOUT`. The moment the rusty set
+--- grows a sixth stub that does not start bolted on, a `LOADOUT`-derived version would silently
+--- fail to grant it and the part would be unequippable with no error anywhere.
+---
+--- ⚠️ A player must OWN their starter parts, or taking the rusty wrench off to try a found one
+--- would throw it away: the builder refuses to install what is not owned, so an un-owned starter
+--- is a one-way door.
+function StarterRobot.ownedSet(): { [string]: boolean }
+	local out = {}
+	for id in pairs(StarterRobot.PARTS) do
+		out[id] = true
+	end
+	return out
+end
+
 function StarterRobot.def(partId: string)
 	return StarterRobot.PARTS[partId]
 end

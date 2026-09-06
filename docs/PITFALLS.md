@@ -805,3 +805,56 @@ shared registry so the template is rebuildable if the place is ever lost.
 **Check:** put the gated write in a real `LocalScript`, press Play, and read the *error* log — not
 the return value of a command-bar experiment. If a capability is involved, the command bar is not
 evidence.
+
+### 64. `x and nil or y` is `y` for every value of `x`
+
+Luau's `and`/`or` chain has no way to yield `nil` from the middle. `true and nil` is `nil`, and
+`nil or y` is then `y` — so the expression collapses to `y` whatever `x` was. It reads exactly like a
+ternary and it is not one.
+
+**What it cost:** `PlayerProfile.saveId` released a session lock with
+
+```lua
+snapshot.lock = release and nil or { id = SESSION_ID, at = os.time() }
+```
+
+so **releasing wrote a fresh lock instead of clearing it**, on every leave and every `BindToClose`.
+Nothing threw. The save reported success. No test could see it, because the observable behaviour is
+"the save worked", which it did.
+
+It stayed hidden because `LOCK_STALE_SECONDS` is **10 in Studio** — a leftover lock goes stale before
+anyone notices — and a rejoin onto the same server passes `lockIsMine`. In production the window is
+**180 s**, and the case it breaks is a player leaving and rejoining onto a *different* server inside
+three minutes: refused their own profile, handed a session-only one. Precisely the failure the
+session-lock design exists to prevent.
+
+The identical shape was written again the same day in `RobotService.state`
+(`whyNot = atStation and nil or whyNot`), which reported a player standing at the station with the
+reason "at the station" attached.
+
+**Rule:** use `if cond then nil else v`. Luau has an if-then-else *expression*; reach for it whenever
+either branch can be `nil` or `false`.
+
+**Check:** `tools/luau-analyze.sh` reports this as `MisleadingAndOr` and names the line. It is the
+only thing that found either instance — run it before calling a job done, and do not dismiss that
+diagnostic as style.
+
+### 65. A dead code path is not a working one
+
+Two bugs shipped and sat harmless for jobs at a time because nothing exercised them, then both fired
+the moment job 022 added the feature that reached them:
+
+- **`RobotAssembler.def` never merged `mountRot`.** `mount` reads `def.mountRot`; the catalog merge
+  copied `mesh`, `scale`, `mountFrac` and stopped. Every catalog part with a measured rotation would
+  mount unrotated. It could not fire while the starter five were the only equippable parts — they
+  come from `StarterRobot.def`, return before that branch, and carry no `mountRot`.
+- **The lock release above**, which only matters once two servers can hold one profile.
+
+Both were "already implemented" by any reading of the code, and both were wrong.
+
+**Rule:** when you write the first caller of an existing path, treat that path as unverified
+regardless of how long it has been in the repo. `IMPLEMENTED` is not `VERIFIED`, and code that has
+never run is not implemented — it is written.
+
+**Check:** for a merge or adapter function, list the fields the *consumer* reads and diff that against
+the fields the *producer* writes. `mount` read five; `def` supplied three.

@@ -100,6 +100,14 @@ local function defaultProfile(): any
 			--- has the player ever been GIVEN their starter? Separate from the loadout being
 			--- non-empty, so a player who strips their robot bare is not re-granted one.
 			starterGranted = true,
+			--- 🔴 WHAT THE PLAYER OWNS, as `partId -> true`. The loadout says what is BOLTED ON;
+			--- this says what may be. Without it "install this part" has nothing to check against
+			--- and the server would be taking the client's word for which parts it has -- which is
+			--- decision 0007's whole point, and the one thing a robot builder must not do.
+			---
+			--- ⚠️ A SET, not a list: the question asked of it is always "do you own X", never "what
+			--- is your third part". A list would also let a part be granted twice.
+			owned = StarterRobot.ownedSet(),
 		},
 		stats = {
 			--- deliberately empty until Economy (025) decides what the economy is. The version
@@ -142,6 +150,25 @@ local function migrate(raw: any): any?
 	end
 	if type(p.robot.loadout) ~= "table" then
 		p.robot.loadout = StarterRobot.newLoadout()
+	end
+	--- ⚠️ BACKFILLED, NOT MIGRATED, and the distinction is deliberate. `VERSION` may only be bumped
+	--- alongside a `MIGRATIONS` entry; this is an additive field with a safe default, which is the
+	--- same shape as the `loadout` backfill directly above. A v1 profile written before the robot
+	--- builder existed reads back with its starter set owned and nothing lost.
+	if type(p.robot.owned) ~= "table" then
+		p.robot.owned = StarterRobot.ownedSet()
+	end
+	--- 🔴 SELF-HEALING: anything already BOLTED ON is owned by definition.
+	---
+	--- Otherwise `profile.slot Arm PIPE_WRENCH` -- a dev command that writes the loadout directly,
+	--- and the one the persistence round trip was tested with -- produces a robot wearing a part its
+	--- owner does not own. The builder would then refuse to put it back after a swap, and the player
+	--- would lose a part by looking at it. Reconciling here means the invariant "the loadout is a
+	--- subset of owned" holds for every profile on load, however it was written.
+	for _, partId in pairs(p.robot.loadout) do
+		if type(partId) == "string" then
+			p.robot.owned[partId] = true
+		end
 	end
 	if type(p.stats) ~= "table" then
 		p.stats = {}
@@ -329,7 +356,20 @@ function PlayerProfile.saveId(userId: number, release: boolean?, label: string?)
 					return nil
 				end
 			end
-			snapshot.lock = release and nil or { id = SESSION_ID, at = os.time() }
+			--- 🔴 `if-then-else`, NOT `release and nil or {...}`.
+			---
+			--- That expression can never yield nil: `true and nil` is nil, and `nil or {...}` is
+			--- then the table -- so **releasing wrote a fresh lock instead of clearing it**, on
+			--- every leave and every `BindToClose`. Caught by `luau-analyze`'s `MisleadingAndOr`,
+			--- not by any test: nothing here throws and the save still succeeds.
+			---
+			--- ⚠️ Why it stayed invisible: `LOCK_STALE_SECONDS` is 10 in Studio, so a leftover lock
+			--- went stale before anyone could notice, and a rejoin on the SAME server passes
+			--- `lockIsMine`. In production the stale window is **180 s**, and the case it breaks is
+			--- a player who leaves and rejoins onto a DIFFERENT server inside three minutes -- a
+			--- normal thing to do, and they would have been refused their own profile and handed a
+			--- session-only one. The one bug class this module is built to prevent.
+			snapshot.lock = if release then nil else { id = SESSION_ID, at = os.time() }
 			return snapshot
 		end)
 	end)
@@ -364,6 +404,37 @@ function PlayerProfile.loadout(player: Player): { [string]: string }
 		return p.robot.loadout
 	end
 	return StarterRobot.newLoadout()
+end
+
+--- What this player owns, as `partId -> true`. Read-only to callers by convention; the returned
+--- table IS the profile's, so a caller that writes to it edits the save.
+function PlayerProfile.owned(player: Player): { [string]: boolean }
+	local p = profiles[player.UserId]
+	if p and p.robot and type(p.robot.owned) == "table" then
+		return p.robot.owned
+	end
+	return {}
+end
+
+--- 🔴 The ONLY question the install path asks about ownership, and it asks the SERVER's profile.
+function PlayerProfile.owns(player: Player, partId: string): boolean
+	return PlayerProfile.owned(player)[partId] == true
+end
+
+--- Add a part to the player's inventory. Returns false when there is no profile to change, and
+--- `alreadyOwned` so a caller can tell a first grant from a repeat.
+---
+--- ⚠️ Grants into memory only, like `setSlot` -- the auto-save loop and the leave hook persist it.
+--- Deliberately NOT a save: the SECURED moment (decision 0008) will grant several parts at once
+--- and each one forcing a DataStore write would blow the per-key budget.
+function PlayerProfile.grant(player: Player, partId: string): (boolean, boolean)
+	local p = profiles[player.UserId]
+	if not (p and p.robot and type(p.robot.owned) == "table") then
+		return false, false
+	end
+	local already = p.robot.owned[partId] == true
+	p.robot.owned[partId] = true
+	return true, already
 end
 
 --- Change one slot. In memory only -- the auto-save loop and the leave hook persist it.

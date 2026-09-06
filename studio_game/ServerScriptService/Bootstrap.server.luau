@@ -787,6 +787,69 @@ end)()
 		return ok, { reason = reason, preview = StationService.recyclePreview(player) }
 	end)
 
+	----------------------------------------------------------------------------
+	-- 🔴 THE ROBOT BUILDER. Job 022's last step: a part you own goes on the robot, and stays.
+	--
+	-- Bound HERE rather than in `RobotService` because this block is where `PlayerProfile`,
+	-- `BaseClaimService` and `StationService` are all known to be started -- the service needs all
+	-- three, and requiring it earlier would have it reach for a profile store that does not exist.
+	----------------------------------------------------------------------------
+	local RobotService = require(need(script.Parent, "RobotService"))
+
+	--- The builder's slot list against the rig's actual sockets. A slot the rig has and the list
+	--- forgets is invisible in the UI with nothing to say so, which is why this is checked rather
+	--- than assumed.
+	local slotProblems = RobotService.auditSlots()
+	if #slotProblems > 0 then
+		Log.error("ROBOT SLOTS: %s", table.concat(slotProblems, " | "))
+	else
+		Log.info("robot builder: %d slot(s), all backed by a rig socket", #RobotService.SLOT_ORDER)
+	end
+
+	--- 🔴 Invoke with NO ARGUMENTS to read the state, with (slot, partId) to install. One remote for
+	--- both, the same shape `RequestUpgrade` and `RequestRecycle` use, so what the player is looking
+	--- at and what gets applied cannot come from two different code paths.
+	RemoteBinder.bindFunction("RequestInstallPart", function(player: Player, slot: any, partId: any): (boolean, any)
+		if slot == nil and partId == nil then
+			return true, { reason = "state", state = RobotService.state(player) }
+		end
+		local ok, reason = RobotService.install(player, slot, partId)
+		--- ⚠️ A FRESH state on every reply, success or refusal. The client renders what the server
+		--- sends and never patches its own copy -- otherwise a refused install leaves the UI showing
+		--- a part that is not on the robot, which is the worst possible outcome for a builder.
+		return ok, { reason = reason, state = RobotService.state(player) }
+	end)
+
+	--- 🔴 THE ONLY WAY A PART ENTERS AN INVENTORY TODAY. Ownership really transfers at the Service
+	--- Hub SECURED moment (decision 0008), which is a later group; until then this stands in, and it
+	--- lives in `RobotService.grant` so the builder never quietly becomes a grant path itself.
+	DevTools.register("part.grant", "part.grant GIANT_SPOON -- put a part in your inventory",
+		function(player: Player, partId: unknown)
+			return RobotService.grant(player, partId)
+		end)
+
+	DevTools.register("robot.rebuild", "Rebuild the robot in your bay from your saved loadout",
+		function(player: Player)
+			return RobotService.rebuild(player)
+		end)
+
+	DevTools.register("part.owned", "List the parts you own, by slot", function(player: Player)
+		local st = RobotService.state(player)
+		local rows = {}
+		for _, slot in ipairs(st.slots) do
+			local bucket = st.bySlot[slot]
+			local names = {}
+			for _, v in ipairs(bucket or {}) do
+				--- mark the equipped one, so this answers "what is on the robot" as well
+				local eq = st.equipped[slot]
+				table.insert(names, (eq and eq.partId == v.partId) and ("[" .. v.partId .. "]") or v.partId)
+			end
+			table.insert(rows, ("%s: %s"):format(slot, #names > 0 and table.concat(names, " ") or "-"))
+		end
+		return true, ("%d owned | atBay=%s | persists=%s | %s"):format(
+			st.ownedCount, tostring(st.atStation), tostring(st.willPersist), table.concat(rows, " | "))
+	end)
+
 	--- Rebuilding the room destroys the prompts with it, so they have to come back.
 	DevTools.register("stations.attach", "Re-attach the station prompts (after a workshop.rebuild)", function()
 		local n, problems = StationService.attachPrompts()

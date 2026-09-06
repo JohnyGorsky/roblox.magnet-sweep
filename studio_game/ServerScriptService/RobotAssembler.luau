@@ -75,6 +75,22 @@ function RobotAssembler.def(partId: string): any?
 				merged.mesh = art.mesh
 				merged.scale = art.scale
 				merged.mountFrac = art.mountFrac
+				--- 🔴 `mountRot` TOO, and its absence here was a real bug. `mount` below reads
+				--- `def.mountRot` and this merge set only mesh/scale/mountFrac, so every catalog
+				--- part with a measured rotation arrived unrotated: `BLENDER_MOTOR` (92 deg about
+				--- X) lying on its side, `GIANT_SPOON` and `FRYING_PAN` (103 deg) and
+				--- `GOLDEN_TENDERIZER` (65 deg) pointing the wrong way -- the exact +74 deg
+				--- ceiling-pointing failure the note in `mount` documents.
+				---
+				--- ⚠️ It had never fired because nothing could equip a catalog part until now: the
+				--- starter five come from `StarterRobot.def` and return before this branch, and
+				--- they carry no `mountRot`. A dead code path is not a working one.
+				merged.mountRot = art.mountRot
+				--- Which socket the owner actually placed it in, when they placed it. `PartArt`
+				--- says outright that hanging either tier-3 arm in the OPPOSITE socket is
+				--- unverified, so passing this through lets the caller honour the measured side
+				--- rather than taking whichever socket `socketFor` happens to find first.
+				merged.measuredIn = art.measuredIn
 				--- ⚠️ slot is NOT overridden: the catalog is authoritative on design.
 				return merged
 			end

@@ -140,6 +140,187 @@ It is in code rather than baked into `ReplicatedStorage.RobotRig`'s `C0`s becaus
 scripts, not models**, so the rig template lives only in the unversioned `.rbxl`. A load-bearing pose
 belongs somewhere git can see it.
 
+## Build log 5 — the admin panel, and one bug in the whole design system
+
+`AdminPanel.local.luau` (F4, after F2 `DevConsole` and F3 `AudioBench`). 28 dev commands as tappable
+rows, arguments in one text box, the result on a coloured strip.
+
+**Authorisation was already right and was not touched.** `DevTools.isAuthorised` gates every call
+server-side by `UserId` (`{ [5025640608] = true }`) and `DevTools.run` re-checks on *every* command.
+The panel asks the server whether it is allowed and stays hidden if not — a convenience, not a
+security boundary, and the file's header says exactly that so nobody later mistakes it for one.
+
+### 🔴 Every button in this game was outlining its own letters
+
+The owner's report was "these texts cant read", and the cause was not text size.
+
+`UIStroke.ApplyStrokeMode` defaults to `Contextual`, and on a **text object** that applies the stroke
+to **the glyphs**, not to the border. `Components.button` set a 2 px accent stroke and never set the
+mode; `Components.panel`, four lines away in the same file, sets `Border` explicitly. So the button
+had been drawing a 2 px halo around every letter since it was written — invisible on a 28 px display
+word like **UPGRADE**, and at the 14 px a list row uses, thicker than the strokes of the letters
+themselves.
+
+**Measured, not reasoned:** in the live panel, five rows were switched to `Border` and the rest left
+alone. In a single screenshot the five went crisp and their neighbours stayed fuzzy. One line fixed
+in `Ui/Components.luau`, which fixes it for every button in the game.
+
+The other four `UIStroke` sites were checked and left alone: `Ui/Banner` and `WorkshopBuilder` stroke
+*large* display text, where an outline is the intended legibility effect; `BaseNameplate` and
+`AudioBench` parent theirs to Frames, where `Contextual` already means border.
+
+### Follow-up: the buttons read like code, because they were code
+
+The owner's next report: *"more strange panel without normal titles but title placeholders."* They
+were not placeholders — `scrap.spawn`, `perf.sample` and the rest are the real internal command ids,
+and putting an identifier on a button makes it look unfinished however correct it is.
+
+Fixed by **deriving** the two halves from the dotted name rather than authoring a label table: the
+namespace becomes a gold section header (**SCRAP**), the action becomes the button (**SPAWN**), and
+the full id stays small and dim underneath. Derived rather than authored on purpose — a hand-written
+label map on the client would be a copy of a list the server owns, and a command added later would
+silently fall back to the raw name, i.e. back to the bug. Measured live: **31 commands under 19
+headers**, and `help` still runs from its button.
+
+⚠️ The id is kept, not dropped: it is what you type as `dev("scrap.spawn")` and what the output strip
+echoes back. A prettier button that broke that link would be worse than the ugly one.
+
+### The second half of "cant read"
+
+The panel is 28 rows of body text and it was inheriting `Theme.shape.panelTransparency = 0.2`, so the
+player's own head and the Recycler machine were rendering *through* the help column. That value is
+right for a HUD widget and was not changed; this one panel overrides it to 0.02. Also: names
+left-aligned into a scannable column at 16 px (they were centred in a 42 %-wide button, so `base.who`
+floated in the middle of nothing), help text at 14 px in full-brightness `text` rather than 13 px
+`textDim`, alternating row bands, and the output moved onto its own dark plate.
+
+### Verified through the whole path
+
+Clicked `help` **by instance path**, then read the widget back rather than trusting the picture:
+`Output.Text` began `help -> * audio.bench …` (the genuine server response) and `Output.TextColor3`
+was `(0.247, 0.839, 0.294)` = `Theme.color.recycle`, which is set from the returned **flag**, not
+from the message being non-empty. Button measured 286 × 44 at 16 px, `align Left`, `stroke Border`.
+
+⚠️ **Two earlier "verifications" of this button were false.** Both clicked a pixel read off a
+`screen_capture`, and the capture is scaled ~1.12× relative to the click coordinate space — so the
+click landed one row low, ran `config.dump`, returned a plausible green result, and reported
+`Success`. Nothing errored. Target GUI controls by `instance_path`; a dot in an instance name breaks
+the path, so pick a sibling without one.
+
+## Build log 6 — you can change your robot in play, and it sticks
+
+The deliverable, in the owner's framing: *a dev command grants you a part, you walk to the Robot Bay,
+pick a slot and a part, it appears on the robot immediately, and it is still there after a rejoin.*
+
+### What was added
+
+| | |
+|---|---|
+| `RobotService.luau` | new. Owns every install decision — 7 server-side checks, the state the UI renders, and the grant path |
+| `RobotBuild.local.luau` | new. The Robot Bay screen: slots down the left, owned parts for that slot on the right |
+| `PlayerProfile` | `robot.owned` (a `partId -> true` set) + `owned` / `owns` / `grant` |
+| `StarterRobot.ownedSet()` | the five rusty stubs as an ownership set, derived from `PARTS` not `LOADOUT` |
+| `StationService.BEHAVIOUR.RobotBay` | `screen = "RobotBuild"`; the `notYet` is gone |
+| `Bootstrap` | binds `RequestInstallPart`; registers `part.grant`, `part.owned`, `robot.rebuild`; audits the slot list |
+
+**`RequestInstallPart` already existed in `Remotes.SPECS`** and was one of the endpoints Bootstrap
+reported as unbound every boot. No new remote was added; an unlisted endpoint became a handled one.
+
+### 🔴 The profile had a loadout and no inventory
+
+The loadout says what is BOLTED ON. Nothing said what a player *may* bolt on — so "the server
+verifies ownership", which is what `Remotes.SPECS` already promised for this remote, had nothing to
+verify against. `robot.owned` is that record, and it is **backfilled, not migrated**: `VERSION` may
+only move with a `MIGRATIONS` entry, and this is an additive field with a safe default, exactly like
+the `loadout` backfill beside it.
+
+It also **self-heals**: anything in the loadout is marked owned on load. Otherwise `profile.slot Arm
+PIPE_WRENCH` — the dev command the persistence round trip was tested with — leaves a robot wearing a
+part its owner does not own, and the builder then refuses to put it back after a swap. The player
+would lose a part by looking at it. Measured on the owner's own live profile: it loaded with **11
+owned** = 5 starter + the 6 tier-2 parts a previous session had written straight into the loadout.
+
+### 🔴 Two real bugs found on the way, neither by a test
+
+**1. `RobotAssembler.def` never merged `mountRot`.** `mount` reads `def.mountRot`; the catalog merge
+copied `mesh`, `scale` and `mountFrac` and stopped. Every catalog part with a measured rotation would
+have arrived unrotated — `BLENDER_MOTOR` (92° about X) lying on its side, `GIANT_SPOON` and
+`FRYING_PAN` (103°) and `GOLDEN_TENDERIZER` (65°) pointing the wrong way. That is the exact +74°
+ceiling-pointing failure the note in `mount` documents.
+
+⚠️ **It had never fired because nothing could equip a catalog part.** The starter five come from
+`StarterRobot.def`, return before that branch, and carry no `mountRot`. A dead code path is not a
+working one — and this deliverable was the thing that would have armed it.
+
+**2. `PlayerProfile` never released its session lock.** Pre-existing at HEAD:
+
+```lua
+snapshot.lock = release and nil or { id = SESSION_ID, at = os.time() }
+```
+
+`true and nil` is nil, and `nil or {...}` is the table — so **releasing wrote a fresh lock**, on every
+leave and every `BindToClose`. Found by `luau-analyze`'s `MisleadingAndOr`, which no test would have
+produced: nothing throws and the save reports success.
+
+Why it stayed invisible: `LOCK_STALE_SECONDS` is **10 in Studio**, so a leftover lock went stale
+before anyone noticed, and a rejoin on the same server passes `lockIsMine`. In production the window
+is **180 s**, and the case it breaks is a player leaving and rejoining onto a *different* server
+inside three minutes — who would have been refused their own profile and handed a session-only one.
+The single bug class the module exists to prevent.
+
+The same `x and nil or y` shape was in my own new `RobotService.state` (`whyNot`), where it reported
+a player standing at the bay with the reason "at the station" attached. Both rewritten as
+`if-then-else`.
+
+### Verified in Play, not Edit
+
+**All seven refusals fire**, each with a reason a person can read:
+
+| attempt | reply |
+|---|---|
+| Arm/GIANT_SPOON from 67 studs away | `67 studs from the RobotBay (max 25)` |
+| Head/GIANT_SPOON | `GIANT_SPOON is a Arm part, not Head` |
+| Head/TRAFFIC_LIGHT | `TRAFFIC_LIGHT has no mesh yet, so it cannot be built (finding 0014)` |
+| Arm/GOLDEN_TENDERIZER (not owned) | `you do not own GOLDEN_TENDERIZER` |
+| Elbow/GIANT_SPOON | `"Elbow" is not a robot slot` |
+| Arm/FOO | `no such part as "FOO"` |
+| slot = 42 | `bad request` |
+
+**The gameplay path**, end to end: walked to the bay (8.0 studs, `atStation=true`), pressed **E**, the
+screen opened off the prompt's own `Screen` attribute, clicked ARM then Giant Spoon. Status went green
+`Giant Spoon installed in Arm` — coloured from the returned **flag**, not from the message being
+non-empty.
+
+**The spoon mounted at z = 103° relative to `LeftArmPivot`**, which is its measured `mountRot` to the
+degree. That is bug 1 above, proven fixed rather than assumed: without the merge it reads 0°.
+
+**It sticks.** Full Studio restart, then read back through the dev remote:
+`profile: v1 | sessionOnly=false | createdAt=1788702877 | Arm=GIANT_SPOON …`, and the bay rebuilt
+6 parts from that saved profile with the spoon still at z=103°. Same `createdAt`, so it is the same
+profile and not a fresh default.
+
+**The lock release, with a before AND an after** — read off the DataStore key itself rather than a
+module (`GetAsync("u_…")`, so it is the stored value, not a second copy):
+
+| | `lock` |
+|---|---|
+| while the server held it | `table`, id `8d0d1ba9…` — matching the boot log's `session=8d0d1ba9` |
+| after shutdown (`BindToClose` released) | **`nil`**, and `lastSeen` advanced |
+
+Before the fix the second row would have read the session id back. A check that cannot fail is not a
+check.
+
+### Not done, and why
+
+- **Ownership still arrives only from `part.grant`.** The real transfer is the Service Hub `SECURED`
+  moment (decision 0008), a later group. Keeping the grant in one dev command stops the builder from
+  quietly becoming a second grant path.
+- **72 of 96 catalog parts still cannot be installed** (finding 0014). The builder greys them with
+  the reason on the row rather than offering an install that is guaranteed to fail — measured live
+  with `TRAFFIC_LIGHT`.
+- **Still one client.** Two players racing for a bay, and the 180-second cross-server lock case the
+  fix above is really about, both need a Team Test.
+
 ## Still open
 
 - [ ] **Two-client Team Test.** Everything above is ONE player. A single client cannot show two

@@ -391,6 +391,18 @@ function Components.button(name: string, parent: Instance, opts: ButtonOpts): Te
 	stroke.Color = accent
 	stroke.Thickness = Theme.shape.stroke
 	stroke.Transparency = Theme.shape.strokeTransparency
+	--- 🔴 `Border`, EXPLICITLY. `ApplyStrokeMode` defaults to `Contextual`, and on a text object
+	--- that means the stroke outlines THE GLYPHS, not the frame -- so every button in this game
+	--- was drawing a 2 px halo around its own letters. Harmless on a 28 px display word; at the
+	--- 14 px a list row uses, the halo is thicker than the strokes of the letters and the text is
+	--- unreadable. MEASURED in Play on the admin panel: five rows switched to `Border` went crisp
+	--- while their neighbours stayed fuzzy in the same screenshot.
+	---
+	--- ⚠️ `Components.panel` sets this and the button did not, which is how it survived -- the
+	--- design system's own bezel recipe was right and the button quietly diverged from it.
+	--- An outline on text is a legitimate effect (`Ui/Banner` uses one on purpose, on 40 px
+	--- Bangers). It is never what a bezel wants.
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = b
 
 	local scale = Instance.new("UIScale")

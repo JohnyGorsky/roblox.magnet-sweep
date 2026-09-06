@@ -259,10 +259,31 @@ WorkshopLayout.CRANE = {
 --- that places a robot should read this point, never recompute a position from the crane's box.
 WorkshopLayout.ROBOT_MOUNT = {
 	PART_NAME = "RobotMount",
-	Y = 2.5, -- standing on the crane's rounded stand
+	--- 🔴 MOVED 2026-09-06 (job 022): r 198.7 -> 191.2, Y 2.5 -> 0.
+	---
+	--- The owner reported it plainly -- *"robot is inside crane"* -- and the measurement was worse
+	--- than it looked: **all 16 robot parts intersected `GantryArm`**, not just the arms. The gantry
+	--- is 5.8 studs deep and was **coaxial with the mount**, and the robot is 6.6 deep, so the two
+	--- occupied the same volume. Sweeping the mount along the facet cleared nothing at any offset
+	--- from -6 to +6; only radial separation works. Zero overlap from r <= 192.5, so 191.2 with a
+	--- stud of margin.
+	---
+	--- ⚠️ AND THAT FORCED Y TO 0. The 2.5 was the crane stand's top, but the stand spans r
+	--- 193.7..203.7 -- the robot cannot be both on the stand and out of the gantry. So it now stands
+	--- on the floor tile in front of its crane, which still satisfies
+	--- `docs/systems/robot-assembly`'s "the robot hangs where the whole room can see it".
+	--- Verified in Play: feet at y = -0.06, 0 crane overlaps, all ten bays.
+	---
+	--- ⚠️ Bay 6's marker was additionally at along-facet t = -11 where the other nine were at -1,
+	--- which put it into `CraneStandEnd`. Brought in line; no documented reason for the -11.
+	RADIUS = 191.2,
+	Y = 0, -- the floor tile, in front of the crane -- see above
 	HEADROOM_TO_BEAM = 1.5, -- robot tops out at 13.1, beam underside at 14.6
-	--- ⚠️ The robot's 25-stud bounding box overhangs the 24-stud opening by 0.5 a side. That box
-	--- includes outstretched arms and a held tool; the body itself is well clear.
+	--- ⚠️ This note is now HISTORICAL. It said the robot's box "overhangs the opening by 0.5 a side"
+	--- and that "the body itself is well clear" -- which read as an arms-only problem and is what
+	--- misled the first diagnosis in job 022. Measured with an overlap test rather than a box
+	--- comparison, the TORSO, HEAD, WHEELS and every pivot were inside the gantry too. The robot no
+	--- longer stands in the opening at all, so the opening's width is no longer load-bearing.
 	SAMPLE_ON_BASE = 4,
 	SAMPLE_SOURCE = "DemoRoom.10_Robots.2_Starter",
 }
@@ -302,6 +323,65 @@ WorkshopLayout.DIVIDERS = {
 WorkshopLayout.SPAWN = { bearing = 14, radius = 180, facing = "gate" }
 
 --------------------------------------------------------------------------------
+-- The backdrop (job 021).
+--------------------------------------------------------------------------------
+
+--- 🔴 THE ROOM'S BACKGROUND, in `Workspace.Hub.Room.Backdrop`.
+---
+--- Job 020 left the Workshop as a 489-stud room with a 24-stud wall and open sky above it. Measured
+--- with a 48x27 raycast sky-fan at eye height 5: standing at a base looking across the room, **45.7 %
+--- of the frame was sky**, and all twelve facets were open above y=24. Three of them -- the bar-wall
+--- facets 5, 7 and 11 -- were open to the sky **at standing eye height**, which is 25 % of the
+--- perimeter.
+---
+--- 🔴 THE DELIVERABLE WAS AN ANGLE, NOT A WALL. Doubling the existing wall's height moves the
+--- across-the-room view by **3.5 percentage points**. That is the trap this job existed to avoid: a
+--- handsome, on-palette second wall that changes almost nothing from where the complaint was made.
+--- What worked was closing overhead.
+---
+--- Result, measured in Play (not Edit): across the room **45.7 % -> 0.0 %**.
+WorkshopLayout.BACKDROP = {
+	FOLDER = "Hub.Room.Backdrop",
+
+	--- Radii are to each layer's INNER face. The existing wall's outer face is at 249.8 (type-C bar
+	--- panels stand 11.1 deep), and the floor runs out to 260.2 -- beyond that is void.
+	L1_COLLAR = { radius = 254, yFrom = 0, yTo = 48 },
+	L2_WALL = { radius = 268, yFrom = 40, yTo = 130 },
+	--- the glowing clerestory band: it fills the slot between wall-top and roof that would otherwise
+	--- still show sky, AND it is the light source the roof takes away
+	L3_CLERESTORY = { radius = 267.4, y = 116, height = 22, perFacet = 3 },
+	--- a truss GRID, not a radial fan -- the first version read as a circus tent
+	L4_TRUSSES = { yMain = 122, yCross = 130, pitch = 74, span = 520 },
+	L5_ROOF = { y = 150, bay = 74, panesGlazed = 49 },
+
+	--- 12 facet bands at y 24..48, five types so no two neighbours match. This is what makes the
+	--- ring read as a factory rather than as wallpaper.
+	FACET_TYPES = {
+		[0] = "W", [1] = "P", [2] = "V", [3] = "C", [4] = "M", [5] = "bay+P",
+		[6] = "V", [7] = "bay+M", [8] = "C", [9] = "P", [10] = "W", [11] = "bay+V",
+	},
+	--- P = pipe wall - V = vent/duct - C = cable - M = machine faces - W = window wall
+	--- "bay" = a recessed machinery bay, on the three see-through bar-wall facets only
+
+	--- 🔴 IT READS FROM `Neon` + BLOOM, NEVER FROM LIGHT SPILL.
+	--- `QualityController.local.luau:123-131` clamps every non-`Hero` light to 10 studs on the Low
+	--- tier -- measured in a real Play session with all 150 lights sitting at range 10. A backdrop
+	--- 30-300 studs away gets nothing from a PointLight. 185 of its 1,024 parts are Neon.
+	PARTS = 1024,
+	NEON_PARTS = 185,
+
+	--- ⚠️ Measured and worth keeping: **Atmosphere cannot substitute for the roof.** Pushed to
+	--- Density 0.50 to try fogging the daylight skybox into a dark upper volume, the haze erased the
+	--- backdrop itself -- haze acts on distance and the backdrop is at that distance. The sky is
+	--- closed with geometry or not at all.
+	---
+	--- ⚠️ And see finding 0012: the sky-fan measures OCCLUSION, not APPEARANCE. At 0 % sky the far
+	--- wall can still read as sky, because at 450 studs the Atmosphere washes it to the same value.
+	SKY_PERCENT_BEFORE = { acrossRoom = 45.7, plaza = 37.5, arenaEdge = 41.0, spawnWest = 43.4 },
+	SKY_PERCENT_AFTER = { acrossRoom = 0.0, plaza = 0.0, arenaEdge = 0.5, spawnWest = 0.1 },
+}
+
+--------------------------------------------------------------------------------
 -- What was actually standing when this snapshot was taken.
 --------------------------------------------------------------------------------
 
@@ -309,7 +389,7 @@ WorkshopLayout.SPAWN = { bearing = 14, radius = 180, facing = "gate" }
 --- that nobody wrote down. `Perf.BUDGET.MAX_PARTS_IN_VIEW` is 1800 and the room is over it by
 --- design — the owner was shown the numbers and chose full detail. See findings/0005.
 WorkshopLayout.BUILT = {
-	AS_OF = "2026-09-06 (job 020, after the x0.5 rescale)",
+	AS_OF = "2026-09-06 (job 021: backdrop added; job 022: robot mount moved)",
 	FLOOR_ARENA_GROUND = 442, -- 32-stud tiles, pre-existing, NOT relaid — see the open question
 	FLOOR_EXTENSION = 276,
 	WALL = 1172,
@@ -321,7 +401,26 @@ WorkshopLayout.BUILT = {
 	CRANE_STANDS = 24, -- pad + rim on each of 12 bases
 	SAMPLE_ROBOT = 18, -- base 4 only; the other eleven stay dormant
 	ARENA_NON_FLOOR = 250,
-	ROOM_TOTAL = 2728, -- 2653 + 33 dividers + 24 crane stands + 18 sample robot
+	BACKDROP = 1024, -- job 021, in Hub.Room.Backdrop
+	--- ⚠️ the job-020 sample robot was REMOVED at the owner's request: job 022's claim logic spawns
+	--- a player's own robot from their saved loadout instead.
+	SAMPLE_ROBOT_REMOVED = true,
+	--- 🔴 MEASURED 2026-09-06, not arithmetic on the previous figure. An earlier draft of this line
+	--- reconciled the old 2,728 with a "-138 (recount)" fudge, which is a made-up number in a file
+	--- that reads as authoritative. The real breakdown, counted:
+	---   Floor 276 - Wall 1155 - Signage 16 - Dividers 33 - Backdrop 1024 - Common 29 - Bases 370
+	---   = Hub 2903, plus Arena 692.
+	--- ⚠️ Bases is 370, not job 020's 468: the sample robot went, and the base chain was cut.
+	ROOM_TOTAL = 3595,
+	--- exactly 200 % of `Perf.BUDGET.MAX_PARTS_IN_VIEW` (1800). The owner accepted the backdrop's
+	--- cost with this projection in front of them (see finding 0005 for the same posture on the room
+	--- itself). ⚠️ STILL UNMEASURED ON A DEVICE -- job 022's frame-rate readings were a Studio
+	--- throttle artefact (a hard 15 fps whether the backdrop was present or not), so no performance
+	--- conclusion has ever actually been drawn.
+	BUDGET_PERCENT = 200,
+	--- runtime-generated, so not in the count above: 10 nameplates (job 022) and one robot per
+	--- claimed bay.
+	RUNTIME_GENERATED = "BaseNameplates (10 plates), Hub.Bases.<n>.OwnedRobot",
 }
 
 --- The floor tile is now 15.8 studs (4.4 m, 3.9x the player's width) — it was 32 (9.0 m, 8x), and

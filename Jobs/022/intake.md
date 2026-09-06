@@ -2,7 +2,7 @@
 
 **Project**: `roblox.magnet-sweep`
 **Created**: 2026-09-06 15:14:03
-**Status**: Requirements Gathering (intake)
+**Status**: ✅ Completed 2026-09-06
 
 ## Requirements / goal
 
@@ -31,12 +31,36 @@ KNOWN TECHNICAL RISKS, so the plan does not rediscover them:
 
 VERIFY: two clients in Studio Team Test, not one. A claim system with one player cannot show the bug where two players race for the same bay, and cannot show that player A sees player B's plate correctly.
 
+## What the job actually became
+
+The intake scoped two systems. Each one turned out to be load-bearing for the next, and the owner
+extended the scope twice in-flight (the starter robot + DataStore persistence, then the robot
+builder). Delivered: `BaseClaimService`, `BaseNameplate`, `RobotSpawner`, `PlayerProfile`,
+`Config/StarterRobot`, `Config/PartArt`, `RobotService` + `RobotBuild`.
+
+The three intake questions were answered by the owner: **any free bay** (not the same one), a
+**distinct rusty starter set** (not real catalog parts), and **DataStore persistence now**. The
+nameplates went at r=266.5, y=76 on the job 021 backdrop collar, not above the crane -- moved up at
+the owner's request to the empty wall.
+
 ## Checklist
 
-- [ ] Requirements reviewed (this intake)
-- [ ] **Independent reviewer agent run** - given the symptom/requirement, NOT my theory (GROUND-RULES 8)
-- [ ] **Symptom reproduced in PLAY**, at the player's camera, before any fix (GROUND-RULES 7)
-- [ ] Implementation plan created & agreed
-- [ ] Implementation completed
-- [ ] **Proof it works better** captured - before/after from the same camera, in Play
-- [ ] Final summary + changelog written
+- [x] Requirements reviewed (this intake)
+- [x] **Independent reviewer agent run** - given the symptom/requirement, NOT my theory (GROUND-RULES 8)
+- [x] **Symptom reproduced in PLAY**, at the player's camera, before any fix (GROUND-RULES 7) --
+      the blocker was measured, not assumed: all 10 bays sat `Claimed = false` with nothing to set it
+- [x] Implementation plan created & agreed -- [`implementation-plan.md`](implementation-plan.md),
+      six build logs
+- [x] Implementation completed
+- [x] **Proof it works better** captured - before/after from the same camera, in Play.
+      Persistence proved by round trip (same `createdAt` across a restart); the lock release proved
+      by reading the DataStore key `table` -> `nil`; all seven install refusals exercised.
+- [x] Final summary + changelog written
+
+## ⚠️ The one checklist item that is NOT satisfied
+
+The intake's own **VERIFY** line says: *"two clients in Studio Team Test, not one."* That has never
+been run. One client cannot show two players racing for a bay, cannot show player A seeing player B's
+plate, and cannot show the 180-second cross-server lock case that job 022's own lock-release fix is
+about. It needs the owner to start a Team Test. Recorded in the final summary as the job's biggest
+gap rather than quietly ticked.
